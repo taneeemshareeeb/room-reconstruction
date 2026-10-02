@@ -97,6 +97,8 @@ Possible openings between aligned wall candidates are written to
 candidates on opposite sides of that gap.
 `plan.json` keeps the verified room list empty, and openings, adjacencies,
 dimensions, and floor areas still need validation.
+Current floor-only and floor-and-ceiling candidate outputs are compared in
+[`reports/scan_candidate_comparison.md`](reports/scan_candidate_comparison.md).
 
 Set up the project and run the focused tests with:
 

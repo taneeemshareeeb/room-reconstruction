@@ -66,7 +66,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         render_room_candidate_preview(
             points, room_candidates, str(args.output_dir / "room_candidates.png"),
-            capture_label(args.capture),
+            capture_label(args.capture), opening_candidates=opening_candidates,
         )
         document = build_plan_document(
             capture=capture_label(args.capture), point_count=len(points),

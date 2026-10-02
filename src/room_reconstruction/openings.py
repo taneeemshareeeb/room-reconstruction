@@ -51,15 +51,20 @@ def infer_opening_candidates(
         second_interval = sorted((float(np.dot(r, direction)), float(np.dot(s, direction))))
         if first_interval[1] < second_interval[0]:
             gap = second_interval[0] - first_interval[1]
-            center_t = (first_interval[1] + second_interval[0]) / 2
+            gap_start_t, gap_end_t = first_interval[1], second_interval[0]
         elif second_interval[1] < first_interval[0]:
             gap = first_interval[0] - second_interval[1]
-            center_t = (second_interval[1] + first_interval[0]) / 2
+            gap_start_t, gap_end_t = second_interval[1], first_interval[0]
         else:
             continue
         if not min_gap_m <= gap <= max_gap_m:
             continue
+        center_t = (gap_start_t + gap_end_t) / 2
         midpoint = direction * center_t + normal * ((first_offset + second_offset) / 2)
+        gap_endpoints = [
+            direction * gap_start_t + normal * ((first_offset + second_offset) / 2),
+            direction * gap_end_t + normal * ((first_offset + second_offset) / 2),
+        ]
 
         room_sides = []
         for room in room_candidates:
@@ -85,6 +90,10 @@ def infer_opening_candidates(
             "id": f"opening_candidate_{len(found) + 1:02d}",
             "room_ids": room_ids,
             "center_xz_m": [round(float(value), 3) for value in midpoint],
+            "gap_endpoints_xz_m": [
+                [round(float(value), 3) for value in endpoint]
+                for endpoint in gap_endpoints
+            ],
             "observed_gap_m": round(float(gap), 3),
             "status": "candidate_unverified",
             "reason": (

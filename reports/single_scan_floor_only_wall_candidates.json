@@ -1,0 +1,377 @@
+[
+  {
+    "id": "wall_candidate_01",
+    "start_xz_m": [
+      -3.104,
+      0.882
+    ],
+    "end_xz_m": [
+      -2.832,
+      3.822
+    ],
+    "length_m": 2.952,
+    "supporting_cells": 57,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_02",
+    "start_xz_m": [
+      -2.746,
+      4.751
+    ],
+    "end_xz_m": [
+      -2.345,
+      9.079
+    ],
+    "length_m": 4.346,
+    "supporting_cells": 126,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_03",
+    "start_xz_m": [
+      -0.603,
+      -0.28
+    ],
+    "end_xz_m": [
+      -0.589,
+      3.96
+    ],
+    "length_m": 4.24,
+    "supporting_cells": 163,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_04",
+    "start_xz_m": [
+      -3.752,
+      -0.921
+    ],
+    "end_xz_m": [
+      -3.697,
+      4.041
+    ],
+    "length_m": 4.961,
+    "supporting_cells": 96,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_05",
+    "start_xz_m": [
+      2.251,
+      -0.436
+    ],
+    "end_xz_m": [
+      2.866,
+      4.047
+    ],
+    "length_m": 4.525,
+    "supporting_cells": 87,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_06",
+    "start_xz_m": [
+      -5.232,
+      0.737
+    ],
+    "end_xz_m": [
+      -1.976,
+      0.191
+    ],
+    "length_m": 3.302,
+    "supporting_cells": 134,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_07",
+    "start_xz_m": [
+      -1.158,
+      0.054
+    ],
+    "end_xz_m": [
+      2.202,
+      -0.509
+    ],
+    "length_m": 3.406,
+    "supporting_cells": 133,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_08",
+    "start_xz_m": [
+      -8.367,
+      3.113
+    ],
+    "end_xz_m": [
+      -4.916,
+      2.919
+    ],
+    "length_m": 3.457,
+    "supporting_cells": 102,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_09",
+    "start_xz_m": [
+      0.272,
+      2.627
+    ],
+    "end_xz_m": [
+      2.753,
+      2.487
+    ],
+    "length_m": 2.485,
+    "supporting_cells": 41,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_10",
+    "start_xz_m": [
+      -6.679,
+      -0.999
+    ],
+    "end_xz_m": [
+      -3.879,
+      -0.969
+    ],
+    "length_m": 2.8,
+    "supporting_cells": 73,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_11",
+    "start_xz_m": [
+      -6.059,
+      5.327
+    ],
+    "end_xz_m": [
+      -4.216,
+      5.163
+    ],
+    "length_m": 1.85,
+    "supporting_cells": 32,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_12",
+    "start_xz_m": [
+      -2.605,
+      5.02
+    ],
+    "end_xz_m": [
+      0.757,
+      4.721
+    ],
+    "length_m": 3.375,
+    "supporting_cells": 93,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_13",
+    "start_xz_m": [
+      0.439,
+      5.495
+    ],
+    "end_xz_m": [
+      2.92,
+      5.516
+    ],
+    "length_m": 2.481,
+    "supporting_cells": 64,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_14",
+    "start_xz_m": [
+      -5.205,
+      7.816
+    ],
+    "end_xz_m": [
+      -5.061,
+      5.974
+    ],
+    "length_m": 1.847,
+    "supporting_cells": 49,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_15",
+    "start_xz_m": [
+      -4.972,
+      4.836
+    ],
+    "end_xz_m": [
+      -4.766,
+      2.2
+    ],
+    "length_m": 2.644,
+    "supporting_cells": 57,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_16",
+    "start_xz_m": [
+      -4.709,
+      1.479
+    ],
+    "end_xz_m": [
+      -4.565,
+      -0.362
+    ],
+    "length_m": 1.847,
+    "supporting_cells": 43,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_17",
+    "start_xz_m": [
+      -2.612,
+      4.866
+    ],
+    "end_xz_m": [
+      0.856,
+      4.116
+    ],
+    "length_m": 3.548,
+    "supporting_cells": 56,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_18",
+    "start_xz_m": [
+      -6.949,
+      -0.913
+    ],
+    "end_xz_m": [
+      -6.799,
+      1.493
+    ],
+    "length_m": 2.411,
+    "supporting_cells": 54,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_19",
+    "start_xz_m": [
+      -6.705,
+      3.006
+    ],
+    "end_xz_m": [
+      -6.601,
+      4.697
+    ],
+    "length_m": 1.694,
+    "supporting_cells": 73,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_20",
+    "start_xz_m": [
+      -6.473,
+      6.757
+    ],
+    "end_xz_m": [
+      -6.338,
+      8.924
+    ],
+    "length_m": 2.171,
+    "supporting_cells": 55,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_21",
+    "start_xz_m": [
+      -2.12,
+      0.762
+    ],
+    "end_xz_m": [
+      -0.595,
+      0.471
+    ],
+    "length_m": 1.552,
+    "supporting_cells": 46,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_22",
+    "start_xz_m": [
+      -0.039,
+      0.365
+    ],
+    "end_xz_m": [
+      2.611,
+      -0.141
+    ],
+    "length_m": 2.698,
+    "supporting_cells": 53,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_23",
+    "start_xz_m": [
+      -4.933,
+      5.238
+    ],
+    "end_xz_m": [
+      -4.534,
+      3.429
+    ],
+    "length_m": 1.852,
+    "supporting_cells": 40,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_24",
+    "start_xz_m": [
+      -4.085,
+      1.39
+    ],
+    "end_xz_m": [
+      -3.562,
+      -0.983
+    ],
+    "length_m": 2.43,
+    "supporting_cells": 47,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  },
+  {
+    "id": "wall_candidate_25",
+    "start_xz_m": [
+      -0.427,
+      3.862
+    ],
+    "end_xz_m": [
+      1.571,
+      3.454
+    ],
+    "length_m": 2.04,
+    "supporting_cells": 21,
+    "status": "candidate_unverified",
+    "reason": "Line fit in the -0.56\u20130.14 m height slice; visual confirmation required."
+  }
+]

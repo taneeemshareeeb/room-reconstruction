@@ -77,11 +77,12 @@
     },
     "opening_candidate": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "room_ids", "center_xz_m", "observed_gap_m", "status", "reason"],
+      "required": ["id", "room_ids", "center_xz_m", "gap_endpoints_xz_m", "observed_gap_m", "status", "reason"],
       "properties": {
         "id": {"type": "string"},
         "room_ids": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2},
         "center_xz_m": {"$ref": "#/$defs/point2d"},
+        "gap_endpoints_xz_m": {"type": "array", "prefixItems": [{"$ref": "#/$defs/point2d"}, {"$ref": "#/$defs/point2d"}], "minItems": 2, "maxItems": 2},
         "observed_gap_m": {"type": "number", "exclusiveMinimum": 0},
         "status": {"const": "candidate_unverified"},
         "reason": {"type": "string"}

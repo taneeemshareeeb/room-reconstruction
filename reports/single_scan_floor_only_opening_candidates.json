@@ -1,0 +1,26 @@
+[
+  {
+    "id": "opening_candidate_01",
+    "room_ids": [
+      "room_candidate_01",
+      "room_candidate_02"
+    ],
+    "center_xz_m": [
+      -4.737,
+      1.84
+    ],
+    "gap_endpoints_xz_m": [
+      [
+        -4.766,
+        2.2
+      ],
+      [
+        -4.709,
+        1.479
+      ]
+    ],
+    "observed_gap_m": 0.723,
+    "status": "candidate_unverified",
+    "reason": "Gap between aligned wall traces with room candidates on both sides; may be a doorway or missing scan data."
+  }
+]

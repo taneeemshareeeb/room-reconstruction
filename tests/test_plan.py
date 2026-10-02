@@ -71,6 +71,8 @@ class PlanDocumentTests(unittest.TestCase):
         self.assertEqual(len(openings), 1)
         self.assertEqual(openings[0]["room_ids"], ["room_a", "room_b"])
         self.assertAlmostEqual(openings[0]["observed_gap_m"], 1.0)
+        endpoints = np.asarray(openings[0]["gap_endpoints_xz_m"])
+        self.assertAlmostEqual(np.linalg.norm(endpoints[1] - endpoints[0]), 1.0)
         self.assertEqual(openings[0]["status"], "candidate_unverified")
 
     def test_first_milestone_is_explicitly_partial(self):

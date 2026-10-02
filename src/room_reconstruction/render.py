@@ -74,9 +74,10 @@ def render_wall_candidate_preview(
 
 
 def render_room_candidate_preview(
-    points: np.ndarray, room_candidates: list[dict[str, object]], path: str, title: str
+    points: np.ndarray, room_candidates: list[dict[str, object]], path: str, title: str,
+    opening_candidates: list[dict[str, object]] | None = None,
 ) -> None:
-    """Show candidate-region bounding boxes over the wall-evidence slice."""
+    """Show room outlines and possible opening gaps over the evidence slice."""
     points = np.asarray(points)
     figure, axis = plt.subplots(figsize=(10, 8), constrained_layout=True)
     if len(points) == 0:
@@ -104,7 +105,16 @@ def render_room_candidate_preview(
         axis.text(center[0], center[1], candidate["id"], color="#9a4d00",
                   fontsize=8, ha="center", va="center",
                   bbox={"facecolor": "white", "alpha": 0.75, "edgecolor": "none"})
-    axis.set_title(f"{title}\nROOM CANDIDATE OUTLINES — REVIEW REQUIRED")
+    for opening in opening_candidates or []:
+        endpoints = opening["gap_endpoints_xz_m"]
+        axis.plot([endpoints[0][0], endpoints[1][0]],
+                  [endpoints[0][1], endpoints[1][1]],
+                  color="#d627a8", linewidth=4, solid_capstyle="round")
+        center = opening["center_xz_m"]
+        axis.text(center[0], center[1], opening["id"], color="#9c146f",
+                  fontsize=8, ha="center", va="bottom",
+                  bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
+    axis.set_title(f"{title}\nROOM AND OPENING CANDIDATES — REVIEW REQUIRED")
     axis.set_xlabel("World x (m)")
     axis.set_ylabel("World z (m)")
     axis.set_aspect("equal", adjustable="datalim")
