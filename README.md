@@ -67,6 +67,34 @@ example:
 python scripts/process_pointcloud.py data/raw/single_scan_with_ceiling.zip
 ```
 
+## Running the reconstruction app
+
+The first runnable milestone accepts one LiDAR capture directory or ZIP. It
+applies the confidence mask, transforms sampled depth pixels into world
+coordinates, and writes a point cloud, a preview image, and a versioned JSON
+result. It does not yet infer rooms or measurements. The image is labeled as a
+point-cloud preview, not a floor plan. The output contract is documented in
+`schemas/plan.schema.json`.
+
+```sh
+PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
+  --tier lidar --frame-step 10 --voxel-size 0.02 --output-dir runs/ceiling
+```
+
+The output directory contains `point_cloud.npz`, `plan.png`, and `plan.json`.
+Photo and video capture tiers are not wired up yet; the command reports that
+clearly instead of returning fabricated geometry.
+
+The command also records and renders tentative wall traces in
+`wall_candidates.json` and `wall_candidates.png`. It estimates floor height,
+uses a horizontal slice about 0.85–1.55 m above that estimate, and fits line
+segments to the slice. These are candidate walls, not verified walls.
+It also lists enclosed-region candidates in `room_candidates.json` and
+`room_candidates.png`. Dashed outlines trace the occupied grid boundary; they
+are candidates, not verified room geometry or survey-grade floor areas.
+`plan.json` keeps the verified room list empty, and openings, adjacencies,
+dimensions, and floor areas still need validation.
+
 Set up the project and run the focused tests with:
 
 ```sh

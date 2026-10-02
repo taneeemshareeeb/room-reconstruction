@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://room-reconstruction.local/schemas/plan-0.1.0.json",
+  "title": "Room reconstruction result",
+  "description": "Versioned result contract. Unavailable measurements are represented explicitly, never guessed.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "room_candidates", "scope_line_items", "capabilities", "artifacts", "limitations"],
+  "properties": {
+    "schema_version": {"const": "0.1.0"},
+    "status": {"enum": ["partial", "complete", "failed"]},
+    "created_at": {"type": "string", "format": "date-time"},
+    "capture": {
+      "type": "object", "additionalProperties": false, "required": ["id", "tier"],
+      "properties": {"id": {"type": "string", "minLength": 1}, "tier": {"enum": ["photos", "video", "lidar"]}}
+    },
+    "processing": {
+      "type": "object", "additionalProperties": false, "required": ["frame_step", "voxel_size_m", "point_count"],
+      "properties": {
+        "frame_step": {"type": "integer", "minimum": 1},
+        "voxel_size_m": {"type": "number", "exclusiveMinimum": 0},
+        "point_count": {"type": "integer", "minimum": 0}
+      }
+    },
+    "rooms": {"type": "array", "items": {"$ref": "#/$defs/room"}},
+    "wall_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_candidate"}},
+    "room_candidates": {"type": "array", "items": {"$ref": "#/$defs/room_candidate"}},
+    "scope_line_items": {"type": "array", "items": {"$ref": "#/$defs/scope_item"}},
+    "capabilities": {"type": "object", "additionalProperties": {"enum": ["available", "candidate_available", "not_implemented", "insufficient_data"]}},
+    "artifacts": {"type": "object", "additionalProperties": {"type": "string"}},
+    "limitations": {"type": "array", "items": {"type": "string"}}
+  },
+  "$defs": {
+    "measurement": {
+      "type": "object", "additionalProperties": false,
+      "required": ["value", "unit", "interval", "status", "reason"],
+      "properties": {
+        "value": {"type": ["number", "null"]},
+        "unit": {"type": "string"},
+        "interval": {"oneOf": [{"type": "null"}, {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "minItems": 2, "maxItems": 2}], "default": null},
+        "status": {"enum": ["estimated", "insufficient_data", "not_observed", "not_implemented"]},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "estimated"}}, "required": ["status"]}, "then": {"properties": {"value": {"type": "number"}, "interval": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "minItems": 2, "maxItems": 2}}}},
+        {"if": {"properties": {"status": {"enum": ["insufficient_data", "not_observed", "not_implemented"]}}, "required": ["status"]}, "then": {"properties": {"value": {"type": "null"}, "interval": {"type": "null"}, "reason": {"type": "string", "minLength": 1}}}}
+      ]
+    },
+    "point2d": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "minItems": 2, "maxItems": 2},
+    "wall_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "start_xz_m", "end_xz_m", "length_m", "supporting_cells", "status", "reason"],
+      "properties": {
+        "id": {"type": "string"},
+        "start_xz_m": {"$ref": "#/$defs/point2d"},
+        "end_xz_m": {"$ref": "#/$defs/point2d"},
+        "length_m": {"type": "number", "exclusiveMinimum": 0},
+        "supporting_cells": {"type": "integer", "minimum": 1},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "room_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "estimated_area_m2", "bounds_xz_m", "center_xz_m", "boundary_xz_m", "status", "reason"],
+      "properties": {
+        "id": {"type": "string"},
+        "estimated_area_m2": {"type": "number", "exclusiveMinimum": 0},
+        "bounds_xz_m": {"type": "array", "prefixItems": [{"$ref": "#/$defs/point2d"}, {"$ref": "#/$defs/point2d"}], "minItems": 2, "maxItems": 2},
+        "center_xz_m": {"$ref": "#/$defs/point2d"},
+        "boundary_xz_m": {"type": "array", "items": {"$ref": "#/$defs/point2d"}, "minItems": 4},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "room": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "floor_polygon_m", "floor_area_m2", "ceiling_height_m", "walls", "openings", "adjacent_room_ids", "damage_regions", "concealed_damage"],
+      "properties": {
+        "id": {"type": "string"},
+        "floor_polygon_m": {"type": "array", "items": {"$ref": "#/$defs/point2d"}},
+        "floor_area_m2": {"$ref": "#/$defs/measurement"},
+        "ceiling_height_m": {"$ref": "#/$defs/measurement"},
+        "walls": {"type": "array", "items": {"type": "object", "required": ["id", "length_m"], "properties": {"id": {"type": "string"}, "length_m": {"$ref": "#/$defs/measurement"}}}},
+        "openings": {"type": "array", "items": {"type": "object", "required": ["type", "width_m", "height_m", "sill_height_m"], "properties": {"type": {"enum": ["door", "window", "unknown"]}, "width_m": {"$ref": "#/$defs/measurement"}, "height_m": {"$ref": "#/$defs/measurement"}, "sill_height_m": {"$ref": "#/$defs/measurement"}}}},
+        "adjacent_room_ids": {"type": "array", "items": {"type": "string"}},
+        "damage_regions": {"type": "array", "items": {"type": "object", "required": ["type", "area_m2", "confidence"], "properties": {"type": {"type": "string"}, "area_m2": {"$ref": "#/$defs/measurement"}, "confidence": {"type": "number", "minimum": 0, "maximum": 1}}}},
+        "concealed_damage": {"type": "array", "items": {"type": "object", "required": ["type", "status", "reason"], "properties": {"type": {"type": "string"}, "status": {"enum": ["suspected", "not_observed", "not_assessed"]}, "reason": {"type": "string"}}}}
+      }
+    },
+    "scope_item": {
+      "type": "object", "additionalProperties": false, "required": ["room_id", "trade", "description", "quantity"],
+      "properties": {"room_id": {"type": ["string", "null"]}, "trade": {"type": "string"}, "description": {"type": "string"}, "quantity": {"$ref": "#/$defs/measurement"}}
+    }
+  }
+}
