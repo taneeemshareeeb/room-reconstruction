@@ -79,17 +79,18 @@ translation and rotation, and unusually large pose steps. These checks can
 flag discontinuities, but they do not measure accumulated tracking drift or
 the accuracy of the reconstructed room.
 
-To preview a conservative statistical outlier filter on the saved
+To compare three strengths of a statistical outlier filter on the
 ceiling-inclusive point cloud, run:
 
 ```sh
 PYTHONPATH=src python scripts/compare_pointcloud_filter.py
 ```
 
-The script writes a side-by-side image to
-`reports/single_scan_with_ceiling_filter_comparison.png`. The filter is an
-experiment: it may remove real isolated surfaces along with noise, so the
-unfiltered cloud remains unchanged. It reads the ZIP directly; use
+The script writes a four-panel image to
+`reports/single_scan_with_ceiling_filter_strengths.png`. Each variant uses
+the same neighbor distances and changes only the outlier threshold. The filter
+is an experiment: it may remove real isolated surfaces along with noise, so
+the unfiltered cloud remains unchanged. It reads the ZIP directly; use
 `--input path/to/cloud.npz` to compare a saved point cloud instead.
 
 ## Running the reconstruction app

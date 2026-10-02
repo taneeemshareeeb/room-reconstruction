@@ -13,12 +13,15 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from room_reconstruction.pointcloud import statistical_outlier_filter
-from room_reconstruction.pointcloud import load_archive_point_cloud
+from room_reconstruction.pointcloud import (
+    load_archive_point_cloud,
+    statistical_outlier_distances,
+)
 
 
 DEFAULT_CAPTURE = Path("data/raw/single_scan_with_ceiling.zip")
-DEFAULT_OUTPUT = Path("reports/single_scan_with_ceiling_filter_comparison.png")
+DEFAULT_OUTPUT = Path("reports/single_scan_with_ceiling_filter_strengths.png")
+STD_RATIOS = (1.5, 2.5, 3.5)
 
 
 def compare_clouds(
@@ -29,8 +32,7 @@ def compare_clouds(
     frame_step: int = 10,
     voxel_size: float = 0.02,
     neighbors: int = 16,
-    std_ratio: float = 2.5,
-) -> tuple[int, int]:
+) -> tuple[int, list[tuple[float, int]]]:
     if input_path is None:
         original = load_archive_point_cloud(
             capture_path, frame_step=frame_step, voxel_size=voxel_size
@@ -41,24 +43,32 @@ def compare_clouds(
                 raise ValueError(f"{input_path} does not contain a 'points' array")
             original = np.asarray(archive["points"], dtype=np.float64)
     if original.ndim != 2 or original.shape[1] != 3 or len(original) == 0:
-        raise ValueError(f"{input_path} must contain a non-empty N x 3 point cloud")
-    filtered = statistical_outlier_filter(
-        original, neighbors=neighbors, std_ratio=std_ratio
+        source = input_path or capture_path
+        raise ValueError(f"{source} must produce a non-empty N x 3 point cloud")
+    neighbor_distances = statistical_outlier_distances(
+        original, neighbors=neighbors
     )
+    center = float(neighbor_distances.mean())
+    spread = float(neighbor_distances.std())
+    variants = [
+        (ratio, original[neighbor_distances <= center + ratio * spread])
+        for ratio in STD_RATIOS
+    ]
 
-    all_points = original
-    x_limits = (float(all_points[:, 0].min()), float(all_points[:, 0].max()))
-    z_limits = (float(all_points[:, 2].min()), float(all_points[:, 2].max()))
-    y_limits = (float(all_points[:, 1].min()), float(all_points[:, 1].max()))
-    fig, axes = plt.subplots(1, 2, figsize=(15, 7), sharex=True, sharey=True,
+    x_limits = (float(original[:, 0].min()), float(original[:, 0].max()))
+    z_limits = (float(original[:, 2].min()), float(original[:, 2].max()))
+    y_limits = (float(original[:, 1].min()), float(original[:, 1].max()))
+    fig, axes = plt.subplots(2, 2, figsize=(14, 11), sharex=True, sharey=True,
                              constrained_layout=True)
-    clouds = (original, filtered)
-    titles = (
-        f"Original · {len(original):,} points",
-        f"Filtered · {len(filtered):,} points",
+    clouds = [original, *(cloud for _, cloud in variants)]
+    titles = [f"Original · {len(original):,} points"]
+    titles.extend(
+        f"{ratio:g}σ · {len(cloud):,} points · "
+        f"removed {(len(original) - len(cloud)) / len(original) * 100:.2f}%"
+        for ratio, cloud in variants
     )
     scatter = None
-    for axis, points, title in zip(axes, clouds, titles):
+    for axis, points, title in zip(axes.ravel(), clouds, titles):
         stride = max(1, len(points) // 250_000)
         display = points[::stride]
         scatter = axis.scatter(
@@ -72,18 +82,18 @@ def compare_clouds(
         axis.set_aspect("equal", adjustable="box")
         axis.set_xlabel("World x (m)")
         axis.grid(alpha=0.15, linewidth=0.5)
-    axes[0].set_ylabel("World z (m)")
+    axes[0, 0].set_ylabel("World z (m)")
+    axes[1, 0].set_ylabel("World z (m)")
     fig.suptitle(
-        f"Statistical outlier filter · {neighbors} neighbors · "
-        f"{std_ratio:g} standard deviations\n"
-        "Experimental cleanup — compare with the original before using"
+        f"Statistical outlier filter · {neighbors} neighbors\n"
+        "Higher σ keeps more points · experimental cleanup"
     )
     assert scatter is not None
-    fig.colorbar(scatter, ax=axes.tolist(), label="World height y (m)", shrink=0.85)
+    fig.colorbar(scatter, ax=axes.ravel().tolist(), label="World height y (m)", shrink=0.85)
     output_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(output_path, dpi=180, bbox_inches="tight")
     plt.close(fig)
-    return len(original), len(filtered)
+    return len(original), [(ratio, len(cloud)) for ratio, cloud in variants]
 
 
 def main() -> int:
@@ -97,18 +107,17 @@ def main() -> int:
     parser.add_argument("--frame-step", type=int, default=10)
     parser.add_argument("--voxel-size", type=float, default=0.02)
     parser.add_argument("--neighbors", type=int, default=16)
-    parser.add_argument("--std-ratio", type=float, default=2.5)
     args = parser.parse_args()
-    original_count, filtered_count = compare_clouds(
+    original_count, variants = compare_clouds(
         args.capture, args.output, input_path=args.input,
         frame_step=args.frame_step, voxel_size=args.voxel_size,
-        neighbors=args.neighbors, std_ratio=args.std_ratio,
+        neighbors=args.neighbors,
     )
-    removed = original_count - filtered_count
-    percent = removed / original_count * 100 if original_count else 0.0
     print(f"original points: {original_count:,}")
-    print(f"filtered points: {filtered_count:,}")
-    print(f"removed: {removed:,} ({percent:.2f}%)")
+    for ratio, retained in variants:
+        removed = original_count - retained
+        percent = removed / original_count * 100 if original_count else 0.0
+        print(f"{ratio:g}σ: {retained:,} retained; {removed:,} removed ({percent:.2f}%)")
     print(f"comparison: {args.output}")
     return 0
 
