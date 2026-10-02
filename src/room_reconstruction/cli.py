@@ -12,6 +12,7 @@ import numpy as np
 
 from .plan import build_plan_document, capture_label
 from .geometry import detect_wall_candidates
+from .openings import infer_opening_candidates
 from .pointcloud import load_archive_point_cloud, load_capture_point_cloud
 from .render import (
     render_point_cloud_preview,
@@ -56,8 +57,12 @@ def main(argv: list[str] | None = None) -> int:
             capture_label(args.capture),
         )
         room_candidates = detect_room_candidates(points)
+        opening_candidates = infer_opening_candidates(wall_candidates, room_candidates)
         (args.output_dir / "room_candidates.json").write_text(
             json.dumps(room_candidates, indent=2) + "\n", encoding="utf-8"
+        )
+        (args.output_dir / "opening_candidates.json").write_text(
+            json.dumps(opening_candidates, indent=2) + "\n", encoding="utf-8"
         )
         render_room_candidate_preview(
             points, room_candidates, str(args.output_dir / "room_candidates.png"),
@@ -68,6 +73,7 @@ def main(argv: list[str] | None = None) -> int:
             frame_step=args.frame_step, voxel_size_m=args.voxel_size,
             wall_candidates=wall_candidates,
             room_candidates=room_candidates,
+            opening_candidates=opening_candidates,
         )
         (args.output_dir / "plan.json").write_text(
             json.dumps(document, indent=2) + "\n", encoding="utf-8"
@@ -77,12 +83,13 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        f"Status: partial ({len(wall_candidates)} wall and "
-        f"{len(room_candidates)} room candidates)"
+        f"Status: partial ({len(wall_candidates)} wall, {len(room_candidates)} room, "
+        f"{len(opening_candidates)} opening candidates)"
     )
     print(f"Result: {args.output_dir / 'plan.json'}")
     print(f"Preview: {args.output_dir / 'plan.png'}")
     print(f"Point cloud: {args.output_dir / 'point_cloud.npz'}")
     print(f"Wall candidate preview: {args.output_dir / 'wall_candidates.png'}")
     print(f"Room candidate preview: {args.output_dir / 'room_candidates.png'}")
+    print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
     return 0

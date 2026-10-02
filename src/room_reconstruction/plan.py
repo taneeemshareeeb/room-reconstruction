@@ -14,6 +14,7 @@ def build_plan_document(
     *, capture: str, point_count: int, frame_step: int, voxel_size_m: float,
     wall_candidates: list[dict[str, object]] | None = None,
     room_candidates: list[dict[str, object]] | None = None,
+    opening_candidates: list[dict[str, object]] | None = None,
 ) -> dict[str, Any]:
     """Describe what the current LiDAR milestone measured and what it did not."""
     return {
@@ -29,6 +30,11 @@ def build_plan_document(
         "rooms": [],
         "wall_candidates": wall_candidates or [],
         "room_candidates": room_candidates or [],
+        "opening_candidates": opening_candidates or [],
+        "room_connections": [
+            {"room_ids": candidate["room_ids"], "opening_candidate_id": candidate["id"]}
+            for candidate in opening_candidates or []
+        ],
         "scope_line_items": [],
         "capabilities": {
             "point_cloud": "available",
@@ -49,6 +55,7 @@ def build_plan_document(
             "preview": "plan.png",
             "wall_candidates_preview": "wall_candidates.png",
             "room_candidates_preview": "room_candidates.png",
+            "opening_candidates": "opening_candidates.json",
         },
         "limitations": [
             "The preview shows a projected point cloud; it is not a floor plan.",

@@ -12,6 +12,7 @@ from PIL import Image
 
 from room_reconstruction.cli import main
 from room_reconstruction.geometry import detect_wall_candidates
+from room_reconstruction.openings import infer_opening_candidates
 from room_reconstruction.plan import SCHEMA_VERSION, build_plan_document
 from room_reconstruction.rooms import detect_room_candidates
 
@@ -54,6 +55,23 @@ class PlanDocumentTests(unittest.TestCase):
         self.assertTrue(all(2.5 < candidate["estimated_area_m2"] < 12 for candidate in candidates))
         self.assertTrue(all(candidate["boundary_xz_m"][0] == candidate["boundary_xz_m"][-1]
                             for candidate in candidates))
+
+    def test_opening_gap_links_room_candidates_on_opposite_sides(self):
+        walls = [
+            {"start_xz_m": [-2.0, 0.0], "end_xz_m": [-0.5, 0.0]},
+            {"start_xz_m": [0.5, 0.0], "end_xz_m": [2.0, 0.0]},
+        ]
+        rooms = [
+            {"id": "room_a", "center_xz_m": [0.0, 2.0]},
+            {"id": "room_b", "center_xz_m": [0.0, -2.0]},
+        ]
+
+        openings = infer_opening_candidates(walls, rooms)
+
+        self.assertEqual(len(openings), 1)
+        self.assertEqual(openings[0]["room_ids"], ["room_a", "room_b"])
+        self.assertAlmostEqual(openings[0]["observed_gap_m"], 1.0)
+        self.assertEqual(openings[0]["status"], "candidate_unverified")
 
     def test_first_milestone_is_explicitly_partial(self):
         result = build_plan_document(
@@ -103,6 +121,7 @@ class PlanDocumentTests(unittest.TestCase):
             self.assertTrue((output / "wall_candidates.json").is_file())
             self.assertTrue((output / "room_candidates.png").is_file())
             self.assertTrue((output / "room_candidates.json").is_file())
+            self.assertTrue((output / "opening_candidates.json").is_file())
             with np.load(output / "point_cloud.npz") as point_cloud:
                 self.assertEqual(point_cloud["points"].shape, (4, 3))
 

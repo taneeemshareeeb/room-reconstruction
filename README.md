@@ -92,6 +92,9 @@ segments to the slice. These are candidate walls, not verified walls.
 It also lists enclosed-region candidates in `room_candidates.json` and
 `room_candidates.png`. Dashed outlines trace the occupied grid boundary; they
 are candidates, not verified room geometry or survey-grade floor areas.
+Possible openings between aligned wall candidates are written to
+`opening_candidates.json`; each proposed room connection requires room
+candidates on opposite sides of that gap.
 `plan.json` keeps the verified room list empty, and openings, adjacencies,
 dimensions, and floor areas still need validation.
 

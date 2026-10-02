@@ -5,7 +5,7 @@
   "description": "Versioned result contract. Unavailable measurements are represented explicitly, never guessed.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "room_candidates", "scope_line_items", "capabilities", "artifacts", "limitations"],
+  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "room_candidates", "opening_candidates", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
   "properties": {
     "schema_version": {"const": "0.1.0"},
     "status": {"enum": ["partial", "complete", "failed"]},
@@ -25,6 +25,8 @@
     "rooms": {"type": "array", "items": {"$ref": "#/$defs/room"}},
     "wall_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_candidate"}},
     "room_candidates": {"type": "array", "items": {"$ref": "#/$defs/room_candidate"}},
+    "opening_candidates": {"type": "array", "items": {"$ref": "#/$defs/opening_candidate"}},
+    "room_connections": {"type": "array", "items": {"$ref": "#/$defs/room_connection"}},
     "scope_line_items": {"type": "array", "items": {"$ref": "#/$defs/scope_item"}},
     "capabilities": {"type": "object", "additionalProperties": {"enum": ["available", "candidate_available", "not_implemented", "insufficient_data"]}},
     "artifacts": {"type": "object", "additionalProperties": {"type": "string"}},
@@ -71,6 +73,26 @@
         "boundary_xz_m": {"type": "array", "items": {"$ref": "#/$defs/point2d"}, "minItems": 4},
         "status": {"const": "candidate_unverified"},
         "reason": {"type": "string"}
+      }
+    },
+    "opening_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "room_ids", "center_xz_m", "observed_gap_m", "status", "reason"],
+      "properties": {
+        "id": {"type": "string"},
+        "room_ids": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2},
+        "center_xz_m": {"$ref": "#/$defs/point2d"},
+        "observed_gap_m": {"type": "number", "exclusiveMinimum": 0},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "room_connection": {
+      "type": "object", "additionalProperties": false,
+      "required": ["room_ids", "opening_candidate_id"],
+      "properties": {
+        "room_ids": {"type": "array", "items": {"type": "string"}, "minItems": 2, "maxItems": 2},
+        "opening_candidate_id": {"type": "string"}
       }
     },
     "room": {
