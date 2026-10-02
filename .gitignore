@@ -1,0 +1,22 @@
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python caches and compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Raw room captures are local inputs and should not be committed.
+/data/raw/*
+!/data/raw/.gitkeep
+
