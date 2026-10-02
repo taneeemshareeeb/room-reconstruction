@@ -67,6 +67,18 @@ example:
 python scripts/process_pointcloud.py data/raw/single_scan_with_ceiling.zip
 ```
 
+To inspect odometry continuity for the three capture archives without
+extracting any files, run:
+
+```sh
+python3 scripts/inspect_trajectory.py
+```
+
+The report shows frame count, duration, recorded position bounds, per-frame
+translation and rotation, and unusually large pose steps. These checks can
+flag discontinuities, but they do not measure accumulated tracking drift or
+the accuracy of the reconstructed room.
+
 ## Running the reconstruction app
 
 The first runnable milestone accepts one LiDAR capture directory or ZIP. It
