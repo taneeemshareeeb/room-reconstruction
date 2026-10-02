@@ -79,6 +79,19 @@ translation and rotation, and unusually large pose steps. These checks can
 flag discontinuities, but they do not measure accumulated tracking drift or
 the accuracy of the reconstructed room.
 
+To preview a conservative statistical outlier filter on the saved
+ceiling-inclusive point cloud, run:
+
+```sh
+PYTHONPATH=src python scripts/compare_pointcloud_filter.py
+```
+
+The script writes a side-by-side image to
+`reports/single_scan_with_ceiling_filter_comparison.png`. The filter is an
+experiment: it may remove real isolated surfaces along with noise, so the
+unfiltered cloud remains unchanged. It reads the ZIP directly; use
+`--input path/to/cloud.npz` to compare a saved point cloud instead.
+
 ## Running the reconstruction app
 
 The first runnable milestone accepts one LiDAR capture directory or ZIP. It

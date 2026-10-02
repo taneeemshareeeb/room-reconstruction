@@ -10,6 +10,7 @@ from posixpath import dirname
 
 import numpy as np
 from PIL import Image
+from scipy.spatial import cKDTree
 
 from .depth import (
     _depth_arrays_to_world_points,
@@ -33,6 +34,47 @@ def voxel_downsample(points: np.ndarray, voxel_size: float = 0.02) -> np.ndarray
     voxel_keys = np.floor(points / voxel_size).astype(np.int64)
     _, first_indices = np.unique(voxel_keys, axis=0, return_index=True)
     return points[np.sort(first_indices)]
+
+
+def statistical_outlier_filter(
+    points: np.ndarray,
+    *,
+    neighbors: int = 16,
+    std_ratio: float = 2.5,
+    chunk_size: int = 50_000,
+) -> np.ndarray:
+    """Remove points whose neighbor distances are unusually large.
+
+    This conservative statistical outlier removal is an experiment for sparse
+    sensor speckles. It can also discard legitimate isolated geometry, so its
+    output should be reviewed against the original cloud.
+    """
+    points = np.asarray(points)
+    if points.ndim != 2 or points.shape[1] != 3:
+        raise ValueError("points must have shape N x 3")
+    if not np.isfinite(points).all():
+        raise ValueError("points must contain only finite coordinates")
+    if neighbors < 1:
+        raise ValueError("neighbors must be at least 1")
+    if not np.isfinite(std_ratio) or std_ratio <= 0:
+        raise ValueError("std_ratio must be finite and greater than zero")
+    if chunk_size < 1:
+        raise ValueError("chunk_size must be at least 1")
+    if len(points) <= neighbors + 1:
+        return points.copy()
+
+    tree = cKDTree(points)
+    neighbor_count = min(neighbors + 1, len(points))
+    mean_distances = np.empty(len(points), dtype=np.float64)
+    for start in range(0, len(points), chunk_size):
+        stop = min(start + chunk_size, len(points))
+        distances, _ = tree.query(
+            points[start:stop], k=neighbor_count, workers=-1
+        )
+        mean_distances[start:stop] = distances[:, 1:].mean(axis=1)
+
+    threshold = mean_distances.mean() + std_ratio * mean_distances.std()
+    return points[mean_distances <= threshold].copy()
 
 
 def load_capture_point_cloud(
