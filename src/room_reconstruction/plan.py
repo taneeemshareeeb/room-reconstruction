@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "0.6.0"
+SCHEMA_VERSION = "0.7.0"
 
 
 def build_plan_document(
@@ -40,7 +40,7 @@ def build_plan_document(
             "point_count": point_count,
             "pass_split": pass_split,
         },
-        "rooms": [],
+        "rooms": build_room_drafts(room_candidates or []),
         "wall_candidates": wall_candidates or [],
         "cross_height_wall_candidates": cross_height_wall_candidates or [],
         "room_candidates": room_candidates or [],
@@ -71,7 +71,7 @@ def build_plan_document(
                 else "insufficient_data"
             ),
             "ceiling": surface_candidates["ceiling_candidate_status"],
-            "openings": "not_implemented",
+            "openings": "candidate_available" if wall_gap_candidates else "insufficient_data",
             "room_adjacency": "not_implemented",
             "damage": "not_implemented",
             "concealed_damage": "not_implemented",
@@ -106,9 +106,95 @@ def build_plan_document(
             "Wall-supported room outlines require visual and measured review; partial side coverage does not prove a complete wall.",
             "Floor elevation is a pass-level candidate; ceiling-height peaks are not assigned to rooms or confirmed as ceilings.",
             "Photo/video tiers provide image-space overlap diagnostics only; they do not produce metric 3D geometry.",
-            "Verified room boundaries, dimensions, openings, damage, and scope items are not available.",
+            "Room records are unverified raster candidates; their intervals show processing sensitivity, not calibrated confidence or accuracy.",
+            "Openings, adjacency, damage, and scope items are not confirmed by this capture.",
         ],
     }
+
+
+def build_room_drafts(
+    room_candidates: list[dict[str, object]],
+    *,
+    grid_size_m: float = 0.08,
+    gap_closing_cells: int = 5,
+) -> list[dict[str, object]]:
+    """Expose candidate geometry as useful room records with explicit limits.
+
+    The area interval is a boundary sensitivity band based on the raster's
+    gap-closing radius. It is not a statistical confidence interval and does
+    not include systematic pose drift. Wall trace lengths use the same broad
+    sensitivity band and remain unverified associations.
+    """
+    boundary_sensitivity_m = grid_size_m * gap_closing_cells
+    rooms = []
+    for candidate in room_candidates:
+        geometry = candidate.get("geometry_candidate") or {}
+        area = float(geometry.get("polygon_area_m2", candidate.get("estimated_area_m2", 0.0)))
+        perimeter = float(geometry.get("polygon_perimeter_m", 0.0))
+        if area <= 0:
+            continue
+        delta_area = perimeter * boundary_sensitivity_m
+        area_interval = [
+            round(max(0.0, area - delta_area), 2),
+            round(area + delta_area + 3.14159 * boundary_sensitivity_m**2, 2),
+        ]
+        floor_area = {
+            "value": round(area, 2),
+            "unit": "m²",
+            "interval": area_interval,
+            "status": "estimated",
+            "reason": (
+                f"Raster area candidate. Interval is a ±{boundary_sensitivity_m:.2f} m "
+                "boundary sensitivity band from gap closing, not calibrated confidence; "
+                "pose drift and missing walls are not covered."
+            ),
+        }
+        walls = []
+        for evidence in candidate.get("nearby_wall_evidence", []):
+            length = float(evidence["length_m"])
+            walls.append({
+                "id": str(evidence["wall_candidate_id"]),
+                "length_m": {
+                    "value": round(length, 3),
+                    "unit": "m",
+                    "interval": [
+                        round(max(0.0, length - boundary_sensitivity_m), 3),
+                        round(length + boundary_sensitivity_m, 3),
+                    ],
+                    "status": "estimated",
+                    "reason": (
+                        "Nearby wall-trace length with an unverified association to this region; "
+                        "interval is a processing sensitivity band, not calibrated confidence."
+                    ),
+                },
+                "status": "candidate_unverified",
+            })
+        rooms.append({
+            "id": str(candidate["id"]),
+            "status": "candidate_unverified",
+            "floor_polygon_m": candidate.get("boundary_xz_m", []),
+            "floor_area_m2": floor_area,
+            "ceiling_height_m": {
+                "value": None,
+                "unit": "m",
+                "interval": None,
+                "status": "insufficient_data",
+                "reason": (
+                    "Upper height peaks exist but are not confirmed as a ceiling for this room; "
+                    "no defensible per-room ceiling measurement is available."
+                ),
+            },
+            "walls": walls,
+            "openings": [],
+            "adjacent_room_ids": [],
+            "damage_regions": [],
+            "concealed_damage": [{
+                "type": "unknown",
+                "status": "not_assessed",
+                "reason": "Damage is outside the current point-cloud analysis.",
+            }],
+        })
+    return rooms
 
 
 def capture_label(path: Path) -> str:

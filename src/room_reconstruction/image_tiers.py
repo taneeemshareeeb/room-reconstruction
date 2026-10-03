@@ -325,7 +325,7 @@ def visual_plan_document(
 ) -> dict[str, object]:
     """Create a schema-compatible result without inventing metric geometry."""
     return {
-        "schema_version": "0.6.0",
+        "schema_version": "0.7.0",
         "status": "partial",
         "created_at": datetime.now(timezone.utc).isoformat(),
         "capture": {"id": capture, "tier": tier},
@@ -342,6 +342,7 @@ def visual_plan_document(
         "opening_candidates": [],
         "wall_gap_candidates": [],
         "wall_room_candidates": [],
+        "partial_wall_room_candidates": [],
         "floor_height_candidate": None,
         "ceiling_height_candidates": [],
         "ground_truth_comparison": None,

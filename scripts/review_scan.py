@@ -4,17 +4,31 @@
 from __future__ import annotations
 
 import argparse
+import csv
+import html
 import json
+import os
+import re
+import ssl
 import subprocess
 import sys
+import tempfile
 import threading
+import uuid
+import zipfile
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
-from pathlib import Path
-from urllib.parse import urlsplit
+from pathlib import Path, PurePosixPath
+from urllib.parse import parse_qs, unquote, urlsplit
 
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 PAGE_PATH = PROJECT_ROOT / "scripts" / "review_ui" / "index.html"
+REVIEW_UI_DIR = PAGE_PATH.parent
+DEMO_RESULTS = {
+    "single_room": PROJECT_ROOT / "runs" / "single_room_current",
+    "floor_only": PROJECT_ROOT / "runs" / "single_scan_floor_only",
+    "with_ceiling": PROJECT_ROOT / "runs" / "single_scan_with_ceiling",
+}
 JSON_FILES = {
     "plan": "plan.json",
     "rooms": "room_candidates.json",
@@ -33,6 +47,66 @@ IMAGE_FILES = {
     "wall_candidates.png",
     "cross_height_wall_candidates.png",
 }
+LIDAR_UPLOAD_DIR = PROJECT_ROOT / "data" / "raw" / "phone_uploads"
+MAX_LIDAR_UPLOAD_BYTES = 600 * 1024 * 1024
+MAX_LIDAR_UNCOMPRESSED_BYTES = 4 * 1024 * 1024 * 1024
+MAX_LIDAR_ARCHIVE_ENTRIES = 100_000
+
+
+def _validate_lidar_archive(archive_path: Path) -> dict[str, int]:
+    """Check the archive structure consumed by load_archive_point_cloud."""
+    try:
+        with zipfile.ZipFile(archive_path) as archive:
+            entries = archive.infolist()
+            if len(entries) > MAX_LIDAR_ARCHIVE_ENTRIES:
+                raise ValueError("archive contains too many files")
+            if sum(entry.file_size for entry in entries) > MAX_LIDAR_UNCOMPRESSED_BYTES:
+                raise ValueError("archive expands beyond the 4 GiB safety limit")
+            for entry in entries:
+                normalized = entry.filename.replace("\\", "/")
+                path = PurePosixPath(normalized)
+                if path.is_absolute() or ".." in path.parts or re.match(r"^[a-zA-Z]:", normalized):
+                    raise ValueError("archive contains an unsafe member path")
+
+            odometry_paths = [
+                entry.filename for entry in entries
+                if entry.filename.endswith("/odometry.csv")
+            ]
+            if len(odometry_paths) != 1:
+                raise ValueError(f"expected one nested odometry.csv, found {len(odometry_paths)}")
+            odometry_path = odometry_paths[0]
+            prefix = PurePosixPath(odometry_path).parent.as_posix()
+            members = {entry.filename for entry in entries}
+            with archive.open(odometry_path) as binary_stream:
+                import io
+
+                with io.TextIOWrapper(binary_stream, encoding="utf-8-sig", newline="") as stream:
+                    reader = csv.DictReader(stream, skipinitialspace=True)
+                    required = {"frame", "x", "y", "z", "qx", "qy", "qz", "qw", "fx", "fy", "cx", "cy"}
+                    if reader.fieldnames is None or not required.issubset(reader.fieldnames):
+                        raise ValueError("odometry.csv is missing required pose or camera-intrinsic columns")
+                    frame_ids = []
+                    for row in reader:
+                        try:
+                            frame_id = int(row["frame"])
+                        except (TypeError, ValueError) as exc:
+                            raise ValueError("odometry.csv contains an invalid frame number") from exc
+                        if frame_id < 0 or frame_id in frame_ids:
+                            raise ValueError("odometry.csv frame numbers must be unique and non-negative")
+                        frame_ids.append(frame_id)
+            if not frame_ids:
+                raise ValueError("odometry.csv contains no frames")
+            missing = [
+                f"{kind}/{frame_id:06d}.png"
+                for frame_id in frame_ids[: min(len(frame_ids), 5)]
+                for kind in ("depth", "confidence")
+                if f"{prefix}/{kind}/{frame_id:06d}.png" not in members
+            ]
+            if missing:
+                raise ValueError("archive is missing required depth/confidence frames: " + ", ".join(missing))
+            return {"frame_count": len(frame_ids), "entry_count": len(entries)}
+    except (OSError, zipfile.BadZipFile, zipfile.LargeZipFile, RuntimeError) as exc:
+        raise ValueError(f"could not read LiDAR ZIP archive: {exc}") from exc
 
 
 def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[str, object]:
@@ -111,10 +185,16 @@ def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[st
 
 
 def make_handler(
-    results_dir: Path, report_prefix: str | None = None, *, app_mode: bool = False
+    results_dir: Path, report_prefix: str | None = None, *, app_mode: bool = False,
+    camera_mode: bool = False,
 ) -> type[BaseHTTPRequestHandler]:
     job_state: dict[str, object] = {"status": "idle"}
     job_lock = threading.Lock()
+    current_results_dir = [results_dir]
+    try:
+        default_output_dir = str(results_dir.relative_to(PROJECT_ROOT))
+    except ValueError:
+        default_output_dir = "runs/latest"
     if report_prefix is None:
         image_paths = {name: results_dir / name for name in IMAGE_FILES}
     else:
@@ -128,11 +208,22 @@ def make_handler(
     class ReviewHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             route = urlsplit(self.path).path
+            query = parse_qs(urlsplit(self.path).query)
             if route == "/":
-                body = PAGE_PATH.read_bytes().replace(b"__APP_MODE__", str(app_mode).lower().encode("ascii"))
+                body = PAGE_PATH.read_bytes().replace(
+                    b"__APP_MODE__", str(app_mode).lower().encode("ascii")
+                ).replace(
+                    b"__DEFAULT_OUTPUT_DIR__",
+                    html.escape(default_output_dir, quote=True).encode("utf-8"),
+                ).replace(
+                    b"__CAMERA_MODE__", str(camera_mode).lower().encode("ascii")
+                )
                 self._send_bytes(body, "text/html; charset=utf-8")
             elif route == "/api/results":
-                body = json.dumps(load_results(results_dir, report_prefix)).encode("utf-8")
+                requested_demo = (query.get("demo") or [None])[0]
+                if requested_demo in DEMO_RESULTS:
+                    current_results_dir[0] = DEMO_RESULTS[requested_demo]
+                body = json.dumps(load_results(current_results_dir[0], report_prefix)).encode("utf-8")
                 self.send_response(200)
                 self.send_header("Content-Type", "application/json; charset=utf-8")
                 self.send_header("Content-Length", str(len(body)))
@@ -143,12 +234,38 @@ def make_handler(
                 with job_lock:
                     body = json.dumps(job_state).encode("utf-8")
                 self._send_bytes(body, "application/json; charset=utf-8")
+            elif route == "/api/capture-sessions" and camera_mode:
+                self._send_json({"sessions": _load_capture_sessions()})
+            elif route.startswith("/api/capture-sessions/") and camera_mode:
+                parts = route.strip("/").split("/")
+                if (
+                    len(parts) != 4 or parts[0:2] != ["api", "capture-sessions"]
+                    or not re.fullmatch(r"[a-f0-9]{32}", parts[2])
+                    or not re.fullmatch(r"frame_\d{3}\.(?:jpg|png)", parts[3])
+                ):
+                    self.send_error(404)
+                    return
+                path = CAMERA_SESSIONS_DIR / parts[2] / parts[3]
+                self._send_file(path, "image/png" if path.suffix == ".png" else "image/jpeg")
+            elif route == "/manifest.webmanifest":
+                path = REVIEW_UI_DIR / "manifest.webmanifest"
+                self._send_file(path, "application/manifest+json")
+            elif route in {"/icon-192.png", "/apple-touch-icon.png"}:
+                path = REVIEW_UI_DIR / "icon-192.png"
+                self._send_file(path, "image/png")
+            elif route == "/icon-512.png":
+                path = REVIEW_UI_DIR / "icon-512.png"
+                self._send_file(path, "image/png")
             elif route.startswith("/artifact/"):
                 name = route.removeprefix("/artifact/")
                 if name not in IMAGE_FILES:
                     self.send_error(404)
                     return
-                path = image_paths[name]
+                path = (
+                    current_results_dir[0] / name
+                    if app_mode and report_prefix is None
+                    else image_paths[name]
+                )
                 if not path.is_file():
                     self.send_error(404, f"Missing result image: {name}")
                     return
@@ -157,7 +274,25 @@ def make_handler(
                 self.send_error(404)
 
         def do_POST(self) -> None:
-            if urlsplit(self.path).path != "/api/process" or not app_mode:
+            route = urlsplit(self.path).path
+            if route == "/api/capture-sessions" and camera_mode:
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if length <= 0 or length > MAX_CAPTURE_REQUEST_BYTES:
+                        raise ValueError("request body must be between 1 byte and 50 MiB")
+                    if self.headers.get_content_type() != "application/json":
+                        raise ValueError("Content-Type must be application/json")
+                    payload = json.loads(self.rfile.read(length))
+                    session = _store_camera_session(payload)
+                except (ValueError, TypeError, json.JSONDecodeError, OverflowError) as exc:
+                    self._send_json({"error": str(exc)}, status=400)
+                    return
+                except OSError as exc:
+                    self._send_json({"error": f"could not store camera session: {exc}"}, status=500)
+                    return
+                self._send_json(session, status=201)
+                return
+            if route != "/api/process" or not app_mode:
                 self.send_error(404)
                 return
             try:
@@ -176,10 +311,20 @@ def make_handler(
                 capture.relative_to((PROJECT_ROOT / "data" / "raw").resolve())
                 if not capture.exists():
                     raise ValueError("capture path does not exist inside the project")
-                output_dir = results_dir.resolve()
-                output_dir.relative_to(PROJECT_ROOT)
+                output_text = payload.get("output_dir")
+                if not isinstance(output_text, str) or not output_text.strip():
+                    raise ValueError("output folder is required")
+                requested_output = Path(output_text.strip()).expanduser()
+                output_dir = (
+                    PROJECT_ROOT / requested_output
+                    if not requested_output.is_absolute()
+                    else requested_output
+                ).resolve()
+                output_dir.relative_to((PROJECT_ROOT / "runs").resolve())
+                if output_dir == (PROJECT_ROOT / "runs").resolve():
+                    raise ValueError("choose a result subfolder inside runs")
                 if capture == output_dir or output_dir in capture.parents or capture in output_dir.parents:
-                    raise ValueError("capture path cannot be the output folder or one of its parents")
+                    raise ValueError("capture path and output folder cannot overlap")
                 frame_step = int(payload.get("frame_step", 10))
                 voxel_size = float(payload.get("voxel_size_m", 0.02))
                 sample_seconds = float(payload.get("sample_seconds", 1.0))
@@ -194,7 +339,12 @@ def make_handler(
                     self._send_json({"error": "a capture is already processing"}, status=409)
                     return
                 job_state.clear()
-                job_state.update({"status": "running", "capture": str(capture.relative_to(PROJECT_ROOT)), "tier": tier})
+                job_state.update({
+                    "status": "running",
+                    "capture": str(capture.relative_to(PROJECT_ROOT)),
+                    "tier": tier,
+                    "output_dir": str(output_dir.relative_to(PROJECT_ROOT)),
+                })
 
             command = [
                 sys.executable, str(PROJECT_ROOT / "run.py"), str(capture),
@@ -209,6 +359,8 @@ def make_handler(
                         command, cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=3600
                     )
                     with job_lock:
+                        if completed.returncode == 0:
+                            current_results_dir[0] = output_dir
                         job_state.clear()
                         job_state.update({
                             "status": "complete" if completed.returncode == 0 else "failed",
@@ -267,6 +419,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1", help="bind address (default: localhost only)")
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--app", action="store_true", help="enable the local capture processing form")
+    parser.add_argument("--camera-capture", action="store_true", help="enable browser camera session uploads")
+    parser.add_argument("--allow-lan", action="store_true", help="allow trusted LAN access; requires HTTPS certificate files")
+    parser.add_argument("--tls-cert", type=Path, help="TLS certificate PEM file for HTTPS")
+    parser.add_argument("--tls-key", type=Path, help="TLS private key PEM file for HTTPS")
     args = parser.parse_args(argv)
     results_dir = args.results_dir.resolve()
     if args.app:
@@ -284,13 +440,31 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error("--report-prefix must be a filename prefix, not a path")
 
-    if args.app and args.host not in {"127.0.0.1", "localhost", "::1"}:
-        parser.error("the processing app can only bind to localhost")
+    if args.camera_capture and not args.app:
+        parser.error("--camera-capture requires --app")
+    if args.allow_lan and (not args.app or not args.camera_capture):
+        parser.error("--allow-lan requires --app and --camera-capture")
+    if args.allow_lan and args.host not in {"0.0.0.0", "::"}:
+        parser.error("--allow-lan requires --host 0.0.0.0 or --host ::")
+    if args.app and args.host not in {"127.0.0.1", "localhost", "::1"} and not args.allow_lan:
+        parser.error("non-local app binding requires --allow-lan")
+    if bool(args.tls_cert) != bool(args.tls_key):
+        parser.error("--tls-cert and --tls-key must be supplied together")
+    if args.allow_lan and not (args.tls_cert and args.tls_key):
+        parser.error("--allow-lan requires --tls-cert and --tls-key for iPhone camera access")
     server = ThreadingHTTPServer(
-        (args.host, args.port), make_handler(results_dir, args.report_prefix, app_mode=args.app)
+        (args.host, args.port), make_handler(
+            results_dir, args.report_prefix, app_mode=args.app, camera_mode=args.camera_capture
+        )
     )
+    if args.tls_cert and args.tls_key:
+        tls_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        tls_context.load_cert_chain(args.tls_cert, args.tls_key)
+        server.socket = tls_context.wrap_socket(server.socket, server_side=True)
     print(f"Room Reconstruction app writing to {results_dir}" if args.app else f"Reviewing results in {results_dir}")
-    print(f"Open http://{args.host}:{server.server_port}/ (Ctrl+C to stop)")
+    protocol = "https" if args.tls_cert else "http"
+    display_host = "localhost" if args.host in {"0.0.0.0", "::"} else args.host
+    print(f"Open {protocol}://{display_host}:{server.server_port}/ (Ctrl+C to stop)")
     try:
         server.serve_forever()
     except KeyboardInterrupt:

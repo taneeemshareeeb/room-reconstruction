@@ -2,243 +2,791 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light">
-  <title>Room scan review</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#14342B">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="RoomScan">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <title>RoomScan</title>
   <style>
-    :root { color-scheme: light; --ink:#17231f; --muted:#65736d; --line:#dce5df; --paper:#f5f7f4; --green:#176b50; --orange:#bd6c24; }
-    * { box-sizing:border-box } body { margin:0; background:var(--paper); color:var(--ink); font:15px/1.45 system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif }
-    header { display:flex; justify-content:space-between; gap:20px; align-items:center; padding:21px clamp(18px,4vw,54px); background:#fff; border-bottom:1px solid var(--line) }
-    h1 { margin:0; font-size:22px; letter-spacing:-.03em } .sub { color:var(--muted); font-size:13px; margin-top:3px }
-    button,select { font:inherit } button { border:1px solid var(--line); border-radius:9px; padding:9px 13px; background:white; color:var(--ink); cursor:pointer } button:hover { border-color:#9db5a8 } button.primary { background:var(--green); color:white; border-color:var(--green) }
-    main { padding:24px clamp(18px,4vw,54px) 54px; max-width:1600px; margin:auto }
-    .notice { display:none; padding:12px 15px; background:#fff4e7; border:1px solid #f0d0a7; border-radius:10px; margin-bottom:16px }
-    .processor { margin:0 0 18px; padding:15px; border:1px solid var(--line); border-radius:12px; background:#fff; display:grid; grid-template-columns:2fr 1fr repeat(3,minmax(110px,.7fr)) auto; gap:10px; align-items:end }
-    [hidden] { display:none !important }
-    .processor label { display:grid; gap:4px; color:var(--muted); font-size:12px }
-    .processor input,.processor select { width:100%; min-width:0; padding:9px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:white; font:inherit }
-    .job-status { grid-column:1/-1; color:var(--muted); font-size:13px; min-height:1em }
-    .stats { display:grid; grid-template-columns:repeat(5,minmax(100px,1fr)); gap:12px; margin:0 0 18px }
-    .stat { padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:white } .stat strong { display:block; font-size:22px; letter-spacing:-.04em } .stat span { color:var(--muted); font-size:12px }
-    .layout { display:grid; grid-template-columns:minmax(0,1.75fr) minmax(310px,.9fr); gap:17px; align-items:start }
-    .panel { border:1px solid var(--line); background:white; border-radius:14px; overflow:hidden }
-    .tabs { display:flex; gap:5px; flex-wrap:wrap; padding:12px; border-bottom:1px solid var(--line) }
-    .tab { border:0; background:transparent; color:var(--muted); padding:8px 12px } .tab.active { color:#fff; background:var(--green) }
-    .image-wrap { min-height:320px; display:grid; place-items:center; padding:13px; background:#fafbfa }
-    .image-wrap img { display:block; width:100%; height:auto; max-height:72vh; object-fit:contain }
-    .empty { padding:55px 20px; text-align:center; color:var(--muted) }
-    .caption { padding:10px 15px; color:var(--muted); font-size:12px; border-top:1px solid var(--line) }
-    .side-head { padding:16px 17px 12px; display:flex; align-items:center; justify-content:space-between; gap:12px; border-bottom:1px solid var(--line) }
-    .side-head h2 { font-size:16px; margin:0 } .side-head span { color:var(--muted); font-size:12px }
-    .candidate-list { padding:10px; max-height:70vh; overflow:auto }
-    .candidate { border:1px solid var(--line); padding:13px; border-radius:11px; margin-bottom:9px }
-    .candidate-top { display:flex; justify-content:space-between; align-items:start; gap:10px } .candidate h3 { font-size:14px; margin:0 } .candidate p { color:var(--muted); font-size:12px; margin:7px 0 10px }
-    .badge { white-space:nowrap; background:#eff5f0; color:#326149; border-radius:20px; padding:3px 8px; font-size:11px }
-    .review { display:flex; gap:6px; flex-wrap:wrap } .review button { padding:5px 8px; font-size:11px; border-radius:7px } .review button.selected { background:#e4f1e9; border-color:#83b49a; color:#145b3e }
-    .foot { color:var(--muted); margin-top:18px; font-size:12px }
-    @media(max-width:900px) { .layout { grid-template-columns:1fr } .candidate-list { max-height:420px } }
-    @media(max-width:600px) { header { align-items:flex-start; flex-direction:column } .stats { grid-template-columns:repeat(2,1fr) } .image-wrap { min-height:230px } }
-    @media(max-width:1000px) { .processor { grid-template-columns:repeat(2,minmax(0,1fr)) } .processor .capture-input { grid-column:1/-1 } }
+    :root {
+      --bg: #f4f7f4;
+      --panel: rgba(255,255,255,0.92);
+      --ink: #12241d;
+      --muted: #53655f;
+      --line: #dbe7e2;
+      --card: #ffffff;
+      --green: #14342b;
+      --green-strong: #0d291f;
+      --green-soft: #e5f1ec;
+      --shadow: 0 12px 28px rgba(17, 38, 33, 0.08);
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: linear-gradient(180deg, #edf6f1 0%, var(--bg) 36%, #f7f9f7 100%);
+      color: var(--ink);
+      font: 16px/1.5 -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+    img { max-width: 100%; display: block; }
+    button { font: inherit; }
+
+    .app-shell {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      padding: 20px 16px 32px;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .logo {
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--green) 0%, #2a5b50 100%);
+      color: white;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      box-shadow: var(--shadow);
+    }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.5rem;
+      line-height: 1.1;
+      letter-spacing: -0.04em;
+    }
+
+    .brand p {
+      margin: 2px 0 0;
+      font-size: 0.76rem;
+      color: var(--muted);
+    }
+
+    .badge {
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(20, 52, 43, 0.08);
+      color: var(--green-strong);
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      white-space: nowrap;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      padding: 18px 16px;
+      margin-bottom: 18px;
+      backdrop-filter: blur(6px);
+    }
+
+    .hero {
+      background: linear-gradient(135deg, rgba(20, 52, 43, 0.98), rgba(35, 80, 69, 0.94));
+      color: white;
+      padding: 20px 18px 18px;
+      border-radius: 24px;
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+    }
+
+    .hero h2 {
+      margin: 0 0 8px;
+      font-size: 1.6rem;
+      letter-spacing: -0.04em;
+      line-height: 1.1;
+    }
+
+    .hero p {
+      margin: 0;
+      color: rgba(255,255,255,0.84);
+      font-size: 0.96rem;
+    }
+
+    .section-label {
+      display: block;
+      font-size: 0.72rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-weight: 700;
+      color: var(--muted);
+      margin: 0 0 12px;
+    }
+
+    .capture-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .capture-card {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: var(--card);
+      color: var(--ink);
+      border-radius: 18px;
+      min-height: 84px;
+      padding: 14px 16px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 4px;
+      box-shadow: none;
+      transition: transform 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+    }
+
+    .capture-card.selected {
+      border-color: rgba(20, 52, 43, 0.8);
+      background: var(--green-soft);
+    }
+
+    .capture-card:active { transform: scale(0.99); }
+
+    .capture-title {
+      display: block;
+      font-weight: 700;
+      font-size: 1.05rem;
+      letter-spacing: -0.02em;
+    }
+
+    .capture-subtitle {
+      display: block;
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    .primary-action {
+      width: 100%;
+      border: none;
+      border-radius: 16px;
+      background: linear-gradient(135deg, var(--green) 0%, #255d4f 100%);
+      color: white;
+      min-height: 52px;
+      font-weight: 700;
+      box-shadow: 0 10px 20px rgba(20,52,43,0.14);
+      margin-bottom: 14px;
+    }
+
+    .status-banner {
+      background: rgba(20, 52, 43, 0.06);
+      border: 1px solid rgba(20,52,43,0.09);
+      color: var(--green-strong);
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 0.86rem;
+      margin-bottom: 16px;
+    }
+
+    .status-banner.warn {
+      background: rgba(178,125,45,0.12);
+      border-color: rgba(178,125,45,0.2);
+      color: #7d4f17;
+    }
+
+    .metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .metric-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 12px 12px 10px;
+      min-height: 88px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .metric-card span {
+      font-size: 0.74rem;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      font-weight: 700;
+    }
+
+    .metric-card strong {
+      font-size: 1.2rem;
+      letter-spacing: -0.04em;
+      line-height: 1.2;
+      word-break: break-word;
+    }
+
+    .image-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .image-card {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: 18px;
+      overflow: hidden;
+    }
+
+    .image-card img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      background: #eef3f1;
+    }
+
+    .image-label {
+      padding: 12px 12px 14px;
+      border-top: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .image-label strong {
+      font-size: 0.95rem;
+    }
+
+    .image-label small {
+      color: var(--muted);
+    }
+
+    .image-empty {
+      min-height: 162px;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 20px 18px;
+      color: var(--muted);
+      background: rgba(20,52,43,0.03);
+    }
+
+    .empty-copy {
+      margin: 0;
+      font-size: 0.9rem;
+    }
+
+    .meta-note {
+      color: var(--muted);
+      font-size: 0.83rem;
+      margin-top: 10px;
+      line-height: 1.4;
+    }
+
+    .results-shell {
+      display: none;
+    }
+
+    .results-shell.visible {
+      display: block;
+    }
+
+    .footer-note {
+      font-size: 0.82rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .camera-preview {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 16px;
+      background: #172923;
+      margin-bottom: 12px;
+    }
+
+    .capture-controls {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      align-items: end;
+      gap: 8px;
+    }
+
+    .capture-controls label {
+      display: grid;
+      grid-column: 1 / -1;
+      gap: 4px;
+      font-size: 0.74rem;
+      color: var(--muted);
+    }
+
+    .capture-controls input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      background: white;
+      color: var(--ink);
+      font: inherit;
+    }
+
+    .capture-controls button,
+    .session-button {
+      min-height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px 10px;
+      color: var(--ink);
+      background: white;
+      font-weight: 700;
+    }
+
+    .capture-controls .start-capture {
+      background: var(--green);
+      border-color: var(--green);
+      color: white;
+    }
+
+    .capture-controls button:disabled {
+      opacity: 0.48;
+    }
+
+    .capture-progress {
+      width: 100%;
+      height: 8px;
+      margin: 14px 0 4px;
+      accent-color: var(--green);
+    }
+
+    .capture-status {
+      min-height: 1.5em;
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.84rem;
+      overflow-wrap: anywhere;
+    }
+
+    .capture-status.error {
+      color: #8b4f17;
+    }
+
+    .session-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .session-card {
+      border-top: 1px solid var(--line);
+      padding-top: 12px;
+    }
+
+    .session-heading {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+    }
+
+    .session-heading small {
+      color: var(--muted);
+      text-align: right;
+    }
+
+    .session-frames {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 6px;
+    }
+
+    .session-frames img {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      object-fit: cover;
+      border-radius: 8px;
+      background: #eef3f1;
+    }
+
+    @media (min-width: 520px) {
+      .app-shell {
+        max-width: 760px;
+      }
+      .capture-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .metrics {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+      }
+      .image-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      .capture-controls {
+        grid-template-columns: minmax(110px, 1fr) 1fr 1fr;
+      }
+      .capture-controls label {
+        grid-column: auto;
+      }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <div><h1>Room scan review</h1><div class="sub" id="capture-label">Loading scan results…</div></div>
-    <button class="primary" id="export">Export review JSON</button>
-  </header>
-  <main>
-    <form class="processor" id="processor" hidden>
-      <label class="capture-input">Capture path under data/raw<input name="capture" required placeholder="data/raw/single_scan_with_ceiling.zip"></label>
-      <label>Input tier<select name="tier"><option value="lidar">LiDAR</option><option value="video">Video</option><option value="photos">Photos</option></select></label>
-      <label>Frame step (LiDAR)<input name="frame_step" type="number" min="1" value="10"></label>
-      <label>Voxel metres (LiDAR)<input name="voxel_size_m" type="number" min="0.001" step="0.005" value="0.02"></label>
-      <label>Video sample seconds<input name="sample_seconds" type="number" min="0.1" step="0.5" value="1"></label>
-      <button class="primary" type="submit">Process capture</button>
-      <div class="job-status" id="job-status" role="status"></div>
-    </form>
-    <div class="notice" id="notice"></div>
-    <section class="stats" id="stats"></section>
-    <div class="layout">
-      <section class="panel">
-        <nav class="tabs" id="tabs" aria-label="Preview type"></nav>
-        <div class="image-wrap" id="image-wrap"></div>
-        <div class="caption" id="caption"></div>
-      </section>
-      <section class="panel">
-        <div class="side-head"><h2 id="list-title">Candidates</h2><span id="list-count"></span></div>
-        <div class="candidate-list" id="candidate-list"></div>
-      </section>
-    </div>
-    <p class="foot">Geometry candidates are unverified. Review marks stay in this browser until you export them. Processing reads the selected project input and writes results to the configured runs folder.</p>
-  </main>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand">
+        <div class="logo">R</div>
+        <div>
+          <h1>RoomScan</h1>
+          <p>Room reconstruction review</p>
+        </div>
+      </div>
+      <div class="badge">Candidate — unverified</div>
+    </header>
+
+    <section class="hero">
+      <h2>Inspect room geometry candidates on iPhone</h2>
+      <p>Review processed examples or capture a short camera walkthrough. Uploaded RGB frames are saved separately and are not a LiDAR reconstruction.</p>
+    </section>
+
+    <section class="panel" id="camera-capture" hidden>
+      <span class="section-label">Camera walkthrough</span>
+      <video class="camera-preview" id="camera-preview" autoplay playsinline muted></video>
+      <div class="capture-controls">
+        <label>Frame interval (sec)<input id="capture-interval" type="number" min="0.5" max="10" step="0.5" value="1"></label>
+        <button class="start-capture" id="start-capture" type="button">Start Capture</button>
+        <button id="stop-capture" type="button" disabled>Stop Capture</button>
+      </div>
+      <progress class="capture-progress" id="capture-progress" max="60" value="0"></progress>
+      <p class="capture-status" id="capture-status" role="status" aria-live="polite">Camera is off. Start Capture to request iPhone camera access.</p>
+      <button class="session-button" id="retry-upload" type="button" hidden>Retry upload</button>
+      <div class="session-list" id="capture-sessions"></div>
+      <p class="meta-note">Frames are uploaded as a separate camera session. The current LiDAR reconstruction pipeline requires depth and pose data, so these RGB frames are not processed into room geometry.</p>
+    </section>
+
+    <section class="panel">
+      <span class="section-label">Demo captures</span>
+      <div class="capture-grid" id="capture-grid"></div>
+      <button id="open-button" class="primary-action" type="button">Open selected reconstruction</button>
+    </section>
+
+    <section id="results" class="results-shell visible panel">
+      <span class="section-label">Selected result</span>
+      <div class="status-banner" id="status-banner">Loading selected reconstruction…</div>
+      <div class="metrics" id="metrics"></div>
+      <div class="image-grid" id="images"></div>
+      <p class="meta-note">All generated geometry is Candidate — unverified. These preview files are review aids, not a validated floor plan.</p>
+    </section>
+
+    <p class="footer-note">This demo is built on the repository’s existing Python pipeline. It reads the generated result folders and does not claim a verified room layout.</p>
+  </div>
+
   <script>
-    const APP_MODE = __APP_MODE__;
-    const views = [
-      {key:"overview", label:"Point cloud", image:"plan.png", note:"Projected point cloud preview. This is not a floor plan."},
-      {key:"layout", label:"Region map", image:"room_layout_draft.png", note:"Scaled map of detected room-region candidates. Regions are unverified and are not a connected floor plan."},
-      {key:"rooms", label:"Raster rooms", image:"room_candidates.png", note:"Dashed orange outlines are enclosed-region candidates; solid green outlines are supported wall loops. Both need review."},
-      {key:"metrics", label:"Room metrics", image:"room_candidates.png", note:"Rough spans and pass-specific surface samples inside each raster room region. Values are candidates, not verified room measurements."},
-      {key:"checks", label:"Measured checks", image:"room_candidates.png", note:"Numerical matches against the hand measurements. The scan and sketch are not spatially registered, so a close match does not confirm identity."},
-      {key:"wall_rooms", label:"Wall outlines", image:"room_candidates.png", note:"Solid green outlines join four cross-height wall segments when each side has at least 70% direct scan support. These remain unverified hypotheses."},
-      {key:"partial_wall_rooms", label:"Partial outlines", image:"room_candidates.png", note:"Dotted amber outlines are extrapolated hypotheses with at least 30% direct support on each side. Unsupported boundary sections are not observed walls."},
-      {key:"walls", label:"Walls", image:"wall_candidates.png", note:"Wall traces are candidates; support counts indicate cross-height consistency, not accuracy."},
-      {key:"gaps", label:"Door / gaps", image:"room_candidates.png", note:"Aligned wall interruptions are possible openings or missing scan evidence; they are not classified as doors."},
-      {key:"consensus", label:"Shared traces", image:"cross_height_wall_candidates.png", note:"Segments that line up across height bands. Agreement is not ground truth."},
-      {key:"overlap", label:"Image overlap", image:"plan.png", note:"Adjacent-image homography matches and registration status. Mosaic drift is possible; metric 3D geometry is unavailable."}
-    ];
-    let data = null, active = "overview";
-    const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-    const itemsFor = key => {
-      if (key === "rooms") return data.files.rooms || [];
-      if (key === "layout") return data.files.rooms || [];
-      if (key === "overlap") {
-        const analysis=data.files.image_analysis || {};
-        return (analysis.adjacent_pair_matches || []).map(match=>({
-          id:`image pair ${match.from_image_index + 1} → ${match.to_image_index + 1}`,
-          status:match.status,
-          match,
-        }));
-      }
-      if (key === "metrics") return ((data.files.plan || {}).room_candidates) || [];
-      if (key === "checks") {
-        const comparison=((data.files.plan || {}).ground_truth_comparison) || {};
-        const records=[];
-        for (const match of comparison.closest_candidate_for_each_measured_side || []) records.push({id:`${match.measurement} · ${match.closest_room_candidate_id}`,kind:"side",data:match});
-        for (const match of comparison.closest_nearby_wall_for_each_side || []) records.push({id:`${match.measurement} wall trace · ${match.wall_candidate_id}`,kind:"wall_length",data:match});
-        for (const candidate of comparison.distinct_side_wall_checks_by_room_candidate || []) records.push({id:`distinct wall check · ${candidate.room_candidate_id}`,kind:"distinct_walls",data:candidate});
-        for (const match of comparison.room_candidate_ranking_by_widths || []) records.push({id:`width check · ${match.room_candidate_id}`,kind:"width",data:match});
-        for (const match of comparison.nearest_wall_gap_by_room_candidate || []) records.push({id:`nearest gap · ${match.room_candidate_id}`,kind:"gap_distance",data:match});
-        if (comparison.bottom_wall_segment) records.push({id:"bottom wall before doorway",kind:"partial_wall",data:comparison.bottom_wall_segment});
-        if (comparison.doorway_comparison) records.push({id:"doorway width",kind:"doorway",data:comparison.doorway_comparison});
-        const ceiling=comparison.ceiling_height_comparison || {};
-        if (ceiling.closest_room_candidate_peak) records.push({id:`ceiling · ${ceiling.closest_room_candidate_peak.room_candidate_id}`,kind:"ceiling",data:ceiling.closest_room_candidate_peak});
-        return records;
-      }
-      if (key === "wall_rooms") return data.files.wall_rooms || [];
-      if (key === "partial_wall_rooms") return data.files.partial_wall_rooms || [];
-      if (key === "walls") return data.files.walls || [];
-      if (key === "gaps") return data.files.wall_gaps || [];
-      if (key === "consensus") return ((data.files.consensus || {}).cross_band_consensus_candidates || []);
-      return [];
+    const CAMERA_MODE = __CAMERA_MODE__;
+    const DEMO_RESULTS = {
+      single_room: 'runs/single_room_current',
+      floor_only: 'runs/single_scan_floor_only',
+      with_ceiling: 'runs/single_scan_with_ceiling'
     };
-    const storageKey = () => "room-scan-review:" + ((data.files.plan || {}).capture || {}).id;
-    const marks = () => { try { return JSON.parse(localStorage.getItem(storageKey()) || "{}"); } catch { return {}; } };
-    function renderStats() {
-      const plan = data.files.plan || {}, processing = plan.processing || {};
-      const pointCount = processing.point_count == null ? "—" : Number(processing.point_count).toLocaleString();
-      const tier=((plan.capture || {}).tier) || "lidar", analysis=data.files.image_analysis || {};
-      const entries = tier === "photos" || tier === "video"
-        ? [["Tier", tier], ["Images / frames", analysis.image_count || 0], ["Pair registrations", analysis.registered_adjacent_pairs || 0], ["Preview", analysis.preview_kind || "unavailable"], ["Metric geometry", "Unavailable"]]
-        : [["Points", pointCount], ["Raster rooms", (data.files.rooms || []).length], ["Wall outlines", (data.files.wall_rooms || []).length], ["Wall candidates", (data.files.walls || []).length], ["Wall gaps", (data.files.wall_gaps || []).length], ["Shared wall traces", ((data.files.consensus || {}).cross_band_consensus_candidates || []).length]];
-      document.querySelector("#stats").innerHTML = entries.map(([label,value]) => `<div class="stat"><strong>${esc(value)}</strong><span>${label}</span></div>`).join("");
-      const tier=((plan.capture || {}).tier) || "lidar";
-      document.querySelector("#capture-label").textContent = tier === "lidar"
-        ? `${((plan.capture || {}).id) || "Scan results"} · LiDAR · every ${processing.frame_step || "?"} frame · ${processing.voxel_size_m ?? "?"} m voxels`
-        : `${((plan.capture || {}).id) || "Image results"} · ${tier} · metric geometry unavailable`;
+
+    const state = {
+      demo: 'single_room',
+      payload: null,
+      stream: null,
+      timer: null,
+      frames: [],
+      startedAt: 0,
+      uploading: false
+    };
+
+    const MAX_CAPTURE_FRAMES = 60;
+    const MAX_CAPTURE_UPLOAD_CHARS = 46 * 1024 * 1024;
+
+    function captureStatus(message, isError = false) {
+      const element = document.getElementById('capture-status');
+      element.textContent = message;
+      element.classList.toggle('error', isError);
     }
-    function renderTabs() {
-      const tier=((data.files.plan || {}).capture || {}).tier;
-      const visible=views.filter(view=>tier === "photos" || tier === "video" ? ["overview","overlap"].includes(view.key) : view.key !== "overlap");
-      document.querySelector("#tabs").innerHTML = visible.map(view => {
-        const label=view.key === "overview" && tier !== "lidar" ? (tier === "video" ? "Video preview" : "Photo preview") : view.label;
-        return `<button class="tab ${active===view.key?"active":""}" data-view="${view.key}">${label}</button>`;
-      }).join("");
-      document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => { active=button.dataset.view; render(); }));
+
+    function updateCaptureProgress() {
+      document.getElementById('capture-progress').value = state.frames.length;
+      const elapsed = state.startedAt ? Math.max(0, Math.floor((Date.now() - state.startedAt) / 1000)) : 0;
+      captureStatus(`Captured ${state.frames.length} of ${MAX_CAPTURE_FRAMES} frames · ${elapsed}s`);
     }
-    function renderImage() {
-      const view = views.find(item => item.key === active), wrap=document.querySelector("#image-wrap");
-      const tier=((data.files.plan || {}).capture || {}).tier, analysis=data.files.image_analysis || {};
-      const note=view.key === "overview" && (tier === "photos" || tier === "video")
-        ? (analysis.preview_kind === "contact_sheet"
-          ? "Contact sheet shown because adjacent image matches did not support a stable global mosaic. This is image coverage review, not a floor plan."
-          : "Image-space panorama candidate assembled from adjacent feature matches. Accumulated drift is possible; this is not a metric floor plan.")
-        : view.note;
-      document.querySelector("#caption").textContent = note;
-      if (!data.images.includes(view.image)) { wrap.innerHTML=`<div class="empty">${esc(view.image)} is missing.<br>Generate a result folder with <code>run.py</code> first.</div>`; return; }
-      wrap.innerHTML=`<img src="/artifact/${view.image}" alt="${esc(view.label)} preview">`;
-    }
-    function describe(item, key) {
-      if (key === "overlap") { const m=item.match || {}; return `${m.status} · ${m.good_matches || 0} feature matches · ${m.ransac_inliers || 0} geometric inliers (${Math.round(100*(m.inlier_fraction || 0))}%)`; }
-      if (key === "rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² estimated · center ${item.center_xz_m?.map(v=>Number(v).toFixed(2)).join(", ")} m`;
-      if (key === "layout") {
-        const geometry=item.geometry_candidate || {};
-        const spans=(geometry.dominant_axis_spans_m || []).map(v=>Number(v).toFixed(2)).join(" × ");
-        return `${Number(geometry.polygon_area_m2 || item.estimated_area_m2 || 0).toFixed(2)} m² rough area · ${spans || "dimensions unavailable"} m rough spans · candidate only`;
+
+    function captureFrame() {
+      if (!state.stream || state.frames.length >= MAX_CAPTURE_FRAMES) return;
+      const video = document.getElementById('camera-preview');
+      if (!video.videoWidth || !video.videoHeight) return;
+      let scale = Math.min(1, 1280 / video.videoWidth);
+      let quality = 0.72;
+      const canvas = document.createElement('canvas');
+      let dataUrl = '';
+      for (let attempt = 0; attempt < 5; attempt += 1) {
+        canvas.width = Math.round(video.videoWidth * scale);
+        canvas.height = Math.round(video.videoHeight * scale);
+        canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+        dataUrl = canvas.toDataURL('image/jpeg', quality);
+        if (dataUrl.length <= 2.65 * 1024 * 1024) break;
+        quality *= 0.75;
+        scale *= 0.8;
       }
-      if (key === "metrics") {
-        const geometry=item.geometry_candidate || {}, floor=item.floor_surface_candidate || {}, upper=item.upper_surface_candidates || {};
-        const spans=(geometry.dominant_axis_spans_m || []).map(v=>Number(v).toFixed(2)).join(" × ");
-        const peaks=(upper.height_candidates || []).map(v=>`${Number(v.height_above_local_floor_m).toFixed(2)} m (${v.supporting_points} pts)`).join(", ") || "no supported upper peak";
-        const floorText=floor.elevation_world_y_m == null ? "floor insufficient" : `floor y ${Number(floor.elevation_world_y_m).toFixed(2)} m (${floor.supporting_points} pts)`;
-        const walls=(item.nearby_wall_evidence || []).map(v=>`${v.wall_candidate_id} ${Number(v.length_m).toFixed(2)} m`).join(", ") || "no nearby wall traces";
-        const gaps=(item.nearby_wall_gap_evidence || []).map(v=>`${v.wall_gap_candidate_id} ${Number(v.observed_width_m).toFixed(2)} m`).join(", ") || "no nearby wall gaps";
-        return `${Number(geometry.polygon_area_m2 || item.estimated_area_m2 || 0).toFixed(2)} m² rough · spans ${spans || "—"} m · ${floorText} · upper: ${peaks} · walls: ${walls} · gaps: ${gaps}`;
+      const currentSize = state.frames.reduce((total, frame) => total + frame.data_url.length, 0);
+      if (currentSize + dataUrl.length > MAX_CAPTURE_UPLOAD_CHARS) {
+        captureStatus('Upload size limit reached · finishing this capture with the frames already recorded.');
+        stopCapture();
+        return;
       }
-      if (key === "checks") {
-        const v=item.data || {};
-        if (item.kind === "side") return `${Number(v.measured_m).toFixed(2)} m measured · rough span ${Number(v.closest_rough_span_m).toFixed(2)} m · difference ${Number(v.absolute_difference_m).toFixed(2)} m`;
-        if (item.kind === "wall_length") return `${Number(v.measured_m).toFixed(2)} m measured · scan trace ${Number(v.candidate_wall_length_m).toFixed(2)} m · difference ${Number(v.absolute_difference_m).toFixed(2)} m · ${v.room_candidate_id}, ${v.boundary_distance_m} m from outline · ${(v.supporting_height_bands || []).join(", ")}`;
-        if (item.kind === "distinct_walls") return `${v.distinct_side_wall_match_count}/${v.side_measurement_count} side lengths have separate nearby wall traces · ${v.matches.map(m=>`${m.measurement}: ${m.wall_candidate_id ? `${Number(m.candidate_wall_length_m).toFixed(2)} m (${Number(m.absolute_difference_m).toFixed(2)} m difference)` : "no distinct trace"}`).join(" · ")} · length assignment only, room sides are not spatially registered`;
-        if (item.kind === "width") return `rough spans ${v.rough_spans_m?.map(n=>Number(n).toFixed(2)).join(" × ")} m · width difference ${Number(v.mean_absolute_width_difference_m).toFixed(2)} m`;
-        if (item.kind === "partial_wall") return `${Number(v.measured_m).toFixed(2)} m measured · partial wall, not mapped to scan yet`;
-        if (item.kind === "gap_distance") return `gap ${Number(v.observed_width_m).toFixed(2)} m · ${Number(v.distance_to_region_boundary_m).toFixed(2)} m from this region boundary`;
-        if (item.kind === "doorway") return v.candidate_width_m == null ? `${Number(v.measured_width_m).toFixed(2)} m measured · no comparable wall gap` : `${Number(v.measured_width_m).toFixed(2)} m measured · gap ${Number(v.candidate_width_m).toFixed(2)} m · difference ${Number(v.absolute_difference_m).toFixed(3)} m`;
-        return `${Number(v.candidate_height_m).toFixed(2)} m closest height peak · difference ${Number(v.absolute_difference_m).toFixed(2)} m · ${v.room_candidate_id}`;
-      }
-      if (key === "wall_rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² · sides ${item.side_lengths_m?.map(v=>Number(v).toFixed(2)).join(" × ")} m · corners ${item.corner_angles_deg?.map(v=>Number(v).toFixed(0)).join("°, ")}° · min wall support ${(100*Number(item.minimum_side_support_fraction || 0)).toFixed(0)}%`;
-      if (key === "walls") return `${Number(item.length_m || 0).toFixed(2)} m · ${item.height_band_support_count ?? 1}/3 height bands · ${item.supporting_cells ?? 0} supporting cells`;
-      if (key === "partial_wall_rooms") return `side lengths ${item.side_lengths_m?.map(v=>Number(v).toFixed(2)).join(" × ")} m · direct scan support ${(item.side_support_fraction || []).map(v=>Math.round(100*Number(v))+"%").join(" / ")} · unsupported edge sections are extrapolated`;
-      if (key === "gaps") return `${Number(item.observed_gap_m || 0).toFixed(2)} m gap · ${item.height_band_support_count ?? 1}/3 height bands · ${(item.supporting_height_bands || []).join(", ") || "band support unavailable"}`;
-      return `${Number(item.shared_length_m || 0).toFixed(2)} m shared · ${item.support_count || 0}/3 height bands (${(item.supporting_bands || []).join(", ")})`;
-    }
-    function renderCandidates() {
-      const list=itemsFor(active), listEl=document.querySelector("#candidate-list"), currentMarks=marks();
-      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({layout:"Rooms in this draft",rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",partial_wall_rooms:"Partial outline hypotheses",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces",overlap:"Adjacent image overlap"}[active]);
-      document.querySelector("#list-count").textContent = active === "overview" ? "" : `${list.length} total`;
-      if (active === "overview") { listEl.innerHTML='<div class="empty">Choose a preview tab to inspect candidate details. Use the buttons on each candidate to record your visual review, then export the marks as JSON.</div>'; return; }
-      if (!list.length) { listEl.innerHTML='<div class="empty">No candidates in this result.</div>'; return; }
-      listEl.innerHTML=list.map(item => {
-        const status=currentMarks[item.id] || "unreviewed";
-        return `<article class="candidate"><div class="candidate-top"><h3>${esc(item.id)}</h3><span class="badge">${esc(item.status || "candidate_unverified")}</span></div><p>${esc(describe(item,active))}</p><div class="review">${[["plausible","Looks plausible"],["false_positive","Likely false"],["needs_followup","Check later"]].map(([value,label])=>`<button data-id="${esc(item.id)}" data-mark="${value}" class="${status===value?"selected":""}">${label}</button>`).join("")}</div></article>`;
-      }).join("");
-      listEl.querySelectorAll("[data-mark]").forEach(button => button.addEventListener("click", () => {
-        const next=marks(); next[button.dataset.id] = next[button.dataset.id] === button.dataset.mark ? "unreviewed" : button.dataset.mark;
-        localStorage.setItem(storageKey(),JSON.stringify(next)); renderCandidates();
-      }));
-    }
-    function render() { renderTabs(); renderImage(); renderCandidates(); }
-    document.querySelector("#export").addEventListener("click", () => {
-      const output={capture:((data.files.plan || {}).capture || {}).id || null, exported_at:new Date().toISOString(), marks:marks()};
-      const link=document.createElement("a"), blob=new Blob([JSON.stringify(output,null,2)+"\n"],{type:"application/json"});
-      link.href=URL.createObjectURL(blob); link.download="scan_review.json"; link.click(); URL.revokeObjectURL(link.href);
-    });
-    async function loadResults() {
-      const response=await fetch("/api/results",{cache:"no-store"}); if(!response.ok) throw new Error(`HTTP ${response.status}`);
-      const result=await response.json();
-      data=result; renderStats(); render();
-      if (result.errors.length) { const notice=document.querySelector("#notice"); notice.style.display="block"; notice.textContent=result.errors.join(" · "); }
-    }
-    loadResults().catch(error => { document.querySelector("#capture-label").textContent="Could not load results"; document.querySelector("#image-wrap").innerHTML=`<div class="empty">${esc(error.message)}. Check that the server is pointed at a generated result folder.</div>`; });
-    if (APP_MODE) {
-      const form=document.querySelector("#processor"), status=document.querySelector("#job-status");
-      form.hidden=false;
-      form.addEventListener("submit",async event=>{
-        event.preventDefault();
-        const fields=Object.fromEntries(new FormData(form).entries());
-        status.textContent="Starting capture processing…";
-        try {
-          const response=await fetch("/api/process",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fields)});
-          const result=await response.json(); if(!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
-          while(true) {
-            await new Promise(resolve=>setTimeout(resolve,1000));
-            const job=await (await fetch("/api/job",{cache:"no-store"})).json();
-            if(job.status === "running") { status.textContent=`Processing ${job.capture} (${job.tier})…`; continue; }
-            if(job.status === "complete") { status.textContent=job.stdout || "Processing complete."; active="overview"; await loadResults(); break; }
-            if(job.status === "failed") throw new Error(job.stderr || "Processing failed.");
-          }
-        } catch(error) { status.textContent=`Processing failed: ${error.message}`; }
+      state.frames.push({
+        timestamp: new Date().toISOString(),
+        elapsed_ms: Date.now() - state.startedAt,
+        data_url: dataUrl
       });
+      updateCaptureProgress();
+      if (state.frames.length >= MAX_CAPTURE_FRAMES) stopCapture();
     }
+
+    function stopCamera() {
+      if (state.timer) window.clearInterval(state.timer);
+      state.timer = null;
+      if (state.stream) state.stream.getTracks().forEach(track => track.stop());
+      state.stream = null;
+      document.getElementById('camera-preview').srcObject = null;
+      document.getElementById('start-capture').disabled = false;
+      document.getElementById('stop-capture').disabled = true;
+    }
+
+    async function uploadCapture() {
+      if (!state.frames.length || state.uploading) return;
+      state.uploading = true;
+      document.getElementById('retry-upload').hidden = true;
+      captureStatus(`Uploading ${state.frames.length} frames…`);
+      try {
+        const response = await fetch('/api/capture-sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ frames: state.frames })
+        });
+        const payload = await response.json();
+        if (!response.ok) throw new Error(payload.error || `Upload failed (${response.status})`);
+        const bytes = Number(payload.total_bytes || 0);
+        captureStatus(`Saved ${payload.frame_count} frames · ${(bytes / 1024 / 1024).toFixed(1)} MiB · session ${payload.session_id}`);
+        state.frames = [];
+        document.getElementById('capture-progress').value = 0;
+        await loadCaptureSessions(payload.session_id);
+      } catch (error) {
+        captureStatus(`Upload failed: ${error.message}. Captured frames are still available to retry.`, true);
+        document.getElementById('retry-upload').hidden = false;
+      } finally {
+        state.uploading = false;
+      }
+    }
+
+    async function stopCapture() {
+      const hadCamera = Boolean(state.stream);
+      stopCamera();
+      if (state.frames.length) {
+        if (hadCamera) captureStatus(`Capture stopped · uploading ${state.frames.length} frames…`);
+        await uploadCapture();
+      } else if (hadCamera) {
+        captureStatus('Capture stopped before a frame was ready. Try again.');
+      }
+    }
+
+    async function startCapture() {
+      const startButton = document.getElementById('start-capture');
+      const stopButton = document.getElementById('stop-capture');
+      startButton.disabled = true;
+      captureStatus('Requesting camera permission…');
+      try {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('Camera access requires HTTPS in Safari. Open the trusted HTTPS address from the README.');
+        }
+        state.stream = await navigator.mediaDevices.getUserMedia({
+          audio: false,
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 } }
+        });
+        const video = document.getElementById('camera-preview');
+        video.srcObject = state.stream;
+        await video.play();
+        const intervalSeconds = Math.min(10, Math.max(0.5, Number(document.getElementById('capture-interval').value) || 1));
+        document.getElementById('capture-interval').value = intervalSeconds;
+        state.frames = [];
+        state.startedAt = Date.now();
+        document.getElementById('capture-progress').value = 0;
+        stopButton.disabled = false;
+        captureFrame();
+        state.timer = window.setInterval(captureFrame, intervalSeconds * 1000);
+        captureStatus(`Capture running · one frame every ${intervalSeconds}s`);
+      } catch (error) {
+        stopCamera();
+        captureStatus(`Could not start camera: ${error.message}`, true);
+      }
+    }
+
+    function renderCaptureSessions(sessions, selectedId) {
+      const container = document.getElementById('capture-sessions');
+      if (!sessions.length) {
+        container.innerHTML = '<p class="capture-status">No uploaded camera sessions yet.</p>';
+        return;
+      }
+      container.innerHTML = sessions.map(session => `
+        <article class="session-card">
+          <div class="session-heading">
+            <strong>${session.frame_count} captured frames</strong>
+            <small>${new Date(session.created_at).toLocaleString()}</small>
+          </div>
+          <div class="session-frames">
+            ${session.frames.map(frame => `<img loading="lazy" src="/api/capture-sessions/${session.session_id}/${frame.filename}" alt="Captured frame at ${frame.timestamp}">`).join('')}
+          </div>
+          <p class="capture-status">Session ${session.session_id} · RGB frames only · not reconstructed</p>
+        </article>
+      `).join('');
+      if (selectedId) {
+        const match = sessions.find(session => session.session_id === selectedId);
+        if (match) captureStatus(`Saved and ready to inspect · ${match.frame_count} frames · ${match.session_id}`);
+      }
+    }
+
+    async function loadCaptureSessions(selectedId) {
+      const container = document.getElementById('capture-sessions');
+      try {
+        const response = await fetch('/api/capture-sessions', { cache: 'no-store' });
+        if (!response.ok) throw new Error(`Session list unavailable (${response.status})`);
+        const payload = await response.json();
+        renderCaptureSessions(payload.sessions || [], selectedId);
+      } catch (error) {
+        container.innerHTML = `<p class="capture-status error">Could not load uploaded sessions: ${error.message}</p>`;
+      }
+    }
+
+    if (CAMERA_MODE) {
+      document.getElementById('camera-capture').hidden = false;
+      document.getElementById('start-capture').addEventListener('click', startCapture);
+      document.getElementById('stop-capture').addEventListener('click', stopCapture);
+      document.getElementById('retry-upload').addEventListener('click', uploadCapture);
+      loadCaptureSessions();
+    }
+
+    function setSelectedCard(demo) {
+      document.querySelectorAll('.capture-card').forEach(card => {
+        card.classList.toggle('selected', card.dataset.demo === demo);
+      });
+      state.demo = demo;
+    }
+
+    async function loadDemo(demo) {
+      setSelectedCard(demo);
+      const banner = document.getElementById('status-banner');
+      banner.textContent = 'Loading selected reconstruction…';
+      banner.classList.remove('warn');
+      try {
+        const response = await fetch(`/api/results?demo=${encodeURIComponent(demo)}`, { cache: 'no-store' });
+        const payload = await response.json();
+        state.payload = payload;
+
+        const plan = payload.files && payload.files.plan ? payload.files.plan : {};
+        const status = plan.status || 'missing';
+        const pointCount = plan.processing && plan.processing.point_count != null
+          ? Number(plan.processing.point_count).toLocaleString()
+          : '—';
+        const wallCount = Array.isArray(plan.wall_candidates) ? plan.wall_candidates.length : 0;
+        const roomCount = Array.isArray(plan.rooms) ? plan.rooms.length : 0;
+        const openingCount = Array.isArray(plan.opening_candidates) ? plan.opening_candidates.length : 0;
+
+        document.getElementById('metrics').innerHTML = [
+          ['Status', status],
+          ['Point count', pointCount],
+          ['Wall candidates', String(wallCount)],
+          ['Room candidates', String(roomCount)],
+          ['Opening candidates', String(openingCount)]
+        ].map(([label, value]) => `
+          <div class="metric-card">
+            <span>${label}</span>
+            <strong>${value}</strong>
+          </div>
+        `).join('');
+
+        const imageFiles = ['plan.png', 'wall_candidates.png', 'room_layout_draft.png'];
+        document.getElementById('images').innerHTML = imageFiles.map(name => {
+          if (!payload.images || !payload.images.includes(name)) {
+            return `
+              <div class="image-card image-empty">
+                <div>
+                  <h3 style="margin:0 0 8px; font-size:1rem; color:#12241d;">${name}</h3>
+                  <p class="empty-copy">This capture has not been processed or the output file is missing.</p>
+                </div>
+              </div>
+            `;
+          }
+          const label = {
+            'plan.png': 'Plan preview',
+            'wall_candidates.png': 'Wall candidates',
+            'room_layout_draft.png': 'Room layout draft'
+          }[name];
+          return `
+            <div class="image-card">
+              <img src="/artifact/${name}" alt="${label}">
+              <div class="image-label">
+                <strong>${label}</strong>
+                <small>Generated from the current capture</small>
+              </div>
+            </div>
+          `;
+        }).join('');
+
+        banner.textContent = `${plan.capture && plan.capture.id ? plan.capture.id : demo} loaded. Candidate geometry is unverified.`;
+        if (payload.errors && payload.errors.length) {
+          banner.classList.add('warn');
+          banner.textContent = payload.errors.join(' · ');
+        }
+      } catch (error) {
+        banner.classList.add('warn');
+        banner.textContent = 'Could not load this reconstruction: ' + error.message;
+      }
+    }
+
+    const cards = Object.entries(DEMO_RESULTS).map(([key, label]) => `
+      <button class="capture-card ${key === 'single_room' ? 'selected' : ''}" data-demo="${key}" type="button">
+        <span class="capture-title">${label.replace(/^runs\//, '')}</span>
+        <span class="capture-subtitle">${key === 'single_room' ? 'Minimal sample room' : key === 'floor_only' ? 'Floor-only pass' : 'Floor + ceiling pass'}</span>
+      </button>
+    `).join('');
+    document.getElementById('capture-grid').innerHTML = cards;
+
+    document.getElementById('capture-grid').addEventListener('click', (event) => {
+      const button = event.target.closest('.capture-card');
+      if (!button) return;
+      loadDemo(button.dataset.demo);
+    });
+
+    document.getElementById('open-button').addEventListener('click', () => {
+      const demo = state.demo || 'single_room';
+      loadDemo(demo);
+      document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+
+    loadDemo('single_room');
   </script>
 </body>
 </html>
