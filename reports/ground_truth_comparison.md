@@ -1,62 +1,73 @@
 # Room layout comparison
 
-This comparison uses the manually measured layout in
-[`data/ground_truth/room_layout.json`](../data/ground_truth/room_layout.json)
-and the current ceiling-inclusive run produced with frame step 10 and 2 cm
-voxels. The sketch is schematic; the room may not have parallel sides or a
-rectangular outline.
+The reference values come from the user-provided sketch and remeasurements in
+[`data/ground_truth/room_layout.json`](../data/ground_truth/room_layout.json).
+The current comparison was generated from `single_scan_with_ceiling.zip` using
+every tenth frame and 2 cm voxels. The sketch is a location reference, not a
+registered floor plan, and the room shape is not forced to be rectangular.
 
-## Measurements
+## Recorded measurements
 
-| Measurement | Value | Reading |
+| Measurement | Value | Status |
 | --- | ---: | --- |
-| Top width | 3.36 m | Recorded in sketch |
-| Bottom width | 3.32 m | Recorded in sketch |
-| Left length | 3.63 m | Remeasured; retain as its own side |
-| Right length | 4.15 m | Remeasured; retain as its own side |
+| Top width | 3.36 m | Recorded from sketch |
+| Bottom width | 3.32 m | Recorded from sketch |
+| Left wall | 3.63 m | Remeasured |
+| Right wall | 4.15 m | Remeasured; kept separate |
 | Ceiling height | 2.63 m | Confirmed by user |
-| Doorway width | 0.85 m | Confirmed by user; bottom wall near right corner |
+| Doorway width | 0.85 m | Confirmed by user |
 
-The two widths agree within 0.04 m. The remeasured side lengths differ by
-0.52 m; do not average them or use them as opposite sides of a rectangle.
-These lengths alone do not determine the room area because the corner geometry
-and full perimeter are not recorded.
+The left and right wall lengths differ by 0.52 m. They are not averaged. The
+full perimeter and corner locations have not been measured, so these values do
+not define a reference area or a complete reference polygon.
 
-## Current scan comparison
+## Scan comparison
 
-The scan produced 4 raster room candidates, no room-linked opening candidates,
-and 4 separate wall-gap candidates. The room raster follows the dominant
-cross-height wall orientation (about 27.3°); its polygons are not snapped to
-rectangles. Candidate 04 has approximate oriented spans of 3.20 m × 3.44 m
-and an estimated raster area of 8.08 m². These spans are numerically near some
-of the measured side lengths, but there is no spatial registration between the
-schematic reference and this scan region, so the association is unconfirmed.
+The scan still yields four raster room candidates and no closed wall-supported
+room outline. Candidate 04 is the closest match to the two similar width
+measurements: its rough dominant-axis spans are **3.20 × 3.44 m**, with a mean
+absolute difference of about **0.10 m**. Its raster footprint is **8.08 m²**.
+These are occupied-grid region estimates, not fitted wall lengths or a
+confirmed match to the measured room.
 
-The candidate outline is derived from a height-slice occupancy raster and
-remains incomplete in places. Its area is not a reliable measurement. The
-remeasured wall lengths do not determine ground-truth area without the full
-perimeter and corner geometry.
+The per-room floor estimates range from **−1.495 m to −1.482 m** in world y,
+with 18,114–41,079 supporting points per candidate. The consistent floor
+levels support the gravity-aligned floor estimate, but do not validate any
+room boundary.
 
-The closest wall gap is 0.819 m, only 0.031 m (3.6%) narrower than the measured
-doorway. Both bounding wall traces have support in all three height bands.
-This is promising evidence, but the gap is not linked to a room pair: the
-existing opening rule requires room candidates on both sides, while the scan
-only has a nearby room candidate on one side. The scan and sketch also have not
-been spatially registered, so this gap cannot yet be confirmed as this
-doorway. The other wall-gap candidates measure 0.460, 0.466, and 0.570 m.
+The scan has different upper-surface peaks in different regions. Candidate 04
+has peaks at **2.475 m** (2,356 points) and **3.075 m** (28,346 points) above
+its local floor. Against the measured **2.63 m** ceiling, the lower peak is
+closer by 0.155 m, while the stronger peak is 0.445 m higher. This is
+ambiguous evidence: the weaker peak could be a beam or header, and the larger
+peak could belong to another height level or adjacent space. No ceiling is
+confirmed.
 
-The 2.63 m ceiling height is not evaluated: the current output does not fit a
-room-specific floor-to-ceiling height.
+The closest scan wall gap is **0.819 m**, **0.031 m (3.6%)** narrower than the
+measured 0.85 m doorway. That gap is not spatially associated with one of the
+four room polygons, so width similarity alone cannot identify it as this
+doorway.
 
-## What this establishes
+The measured left wall is numerically closest to a **3.60 m** rough span in
+Candidate 03 (0.03 m difference). The measured right wall is also closest to
+Candidate 03's 3.60 m rough span (0.55 m difference). The width-matched
+Candidate 04 is different, and its spans do not explain the longer measured
+side. No single candidate currently accounts for the full set of dimensions.
 
-- The scan contains room-shaped raster regions, including one with rough spans
-  near some reported side lengths.
-- The room-to-sketch match remains uncertain because the scan has no visual
-  registration to the schematic reference and the full room shape is unknown.
-- The scan contains a strongly supported wall gap close to the measured
-  doorway width, but has not classified it as a doorway. The candidate room
-  area is still substantially low.
-- Record the room perimeter and corner geometry before treating area or shape
-  as an accuracy metric. Then associate the measured room with a scan region
-  and evaluate doorway and ceiling-height detection.
+## Current result and limits
+
+- Each raster region now has a rough footprint, nearby wall and wall-gap
+  references, floor support, and upward-pass height peaks.
+- Measured widths, wall lengths, ceiling height, and doorway width are compared
+  numerically in
+  [`runs/single_scan_with_ceiling/ground_truth_comparison.json`](../runs/single_scan_with_ceiling/ground_truth_comparison.json).
+- The best numerical width match is still only a hypothesis. Scan and sketch
+  coordinates are not registered, and rough extents are not wall dimensions.
+- Missing room closure and the conflicting upper-height peaks mean the scan
+  does not yet provide a complete, verified room plan. Review the per-room
+  candidates before using dimensions for decisions.
+
+The remaining evidence needed for a verified layout is a measured room
+perimeter with corner positions (or a scan-to-sketch registration), plus a
+visual check of which upper surface is the actual ceiling and which wall gap is
+the doorway.

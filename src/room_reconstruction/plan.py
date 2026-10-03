@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "0.5.0"
+SCHEMA_VERSION = "0.6.0"
 
 
 def build_plan_document(
@@ -20,6 +20,7 @@ def build_plan_document(
     wall_room_candidates: list[dict[str, object]] | None = None,
     pass_split: dict[str, object] | None = None,
     surface_candidates: dict[str, object] | None = None,
+    ground_truth_comparison: dict[str, object] | None = None,
 ) -> dict[str, Any]:
     """Describe what the current LiDAR milestone measured and what it did not."""
     surface_candidates = surface_candidates or {
@@ -47,6 +48,7 @@ def build_plan_document(
         "wall_room_candidates": wall_room_candidates or [],
         "floor_height_candidate": surface_candidates["floor_height_candidate"],
         "ceiling_height_candidates": surface_candidates["ceiling_height_candidates"],
+        "ground_truth_comparison": ground_truth_comparison,
         "room_connections": [
             {"room_ids": candidate["room_ids"], "opening_candidate_id": candidate["id"]}
             for candidate in opening_candidates or []
@@ -59,7 +61,8 @@ def build_plan_document(
             "cross_height_wall_support": "candidate_available",
             "wall_gaps": "candidate_available",
             "wall_supported_room_outlines": "candidate_available",
-            "floor_area": "not_implemented",
+            "floor_area": "candidate_available",
+            "room_surface_measurements": "candidate_available",
             "floor_elevation": (
                 "candidate_available" if surface_candidates["floor_height_candidate"]
                 else "insufficient_data"
@@ -84,6 +87,10 @@ def build_plan_document(
             "wall_gap_candidates": "wall_gap_candidates.json",
             "wall_room_candidates": "wall_room_candidates.json",
             "vertical_surface_candidates": "vertical_surface_candidates.json",
+            **(
+                {"ground_truth_comparison": "ground_truth_comparison.json"}
+                if ground_truth_comparison is not None else {}
+            ),
         },
         "limitations": [
             "The preview shows a projected point cloud; it is not a floor plan.",

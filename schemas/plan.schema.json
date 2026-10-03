@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://room-reconstruction.local/schemas/plan-0.5.0.json",
+  "$id": "https://room-reconstruction.local/schemas/plan-0.6.0.json",
   "title": "Room reconstruction result",
   "description": "Versioned result contract. Unavailable measurements are represented explicitly, never guessed.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "wall_gap_candidates", "wall_room_candidates", "floor_height_candidate", "ceiling_height_candidates", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
+  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "wall_gap_candidates", "wall_room_candidates", "floor_height_candidate", "ceiling_height_candidates", "ground_truth_comparison", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
   "properties": {
-    "schema_version": {"const": "0.5.0"},
+    "schema_version": {"const": "0.6.0"},
     "status": {"enum": ["partial", "complete", "failed"]},
     "created_at": {"type": "string", "format": "date-time"},
     "capture": {
@@ -32,6 +32,7 @@
     "wall_room_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_room_candidate"}},
     "floor_height_candidate": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/floor_height_candidate"}]},
     "ceiling_height_candidates": {"type": "array", "items": {"$ref": "#/$defs/ceiling_height_candidate"}},
+    "ground_truth_comparison": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/ground_truth_comparison"}]},
     "room_connections": {"type": "array", "items": {"$ref": "#/$defs/room_connection"}},
     "scope_line_items": {"type": "array", "items": {"$ref": "#/$defs/scope_item"}},
     "capabilities": {"type": "object", "additionalProperties": {"enum": ["available", "candidate_available", "not_implemented", "insufficient_data"]}},
@@ -76,6 +77,87 @@
         "reference_pass": {"const": "B"},
         "status": {"const": "candidate_unverified"},
         "reason": {"type": "string"}
+      }
+    },
+    "ground_truth_comparison": {
+      "type": "object", "additionalProperties": true,
+      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "room_candidate_ranking_by_two_widths", "doorway_comparison", "ceiling_height_comparison", "limitations"],
+      "properties": {
+        "status": {"const": "partial_unregistered_comparison"},
+        "ground_truth_source": {"type": "string"},
+        "spatial_registration": {"const": "not_available"},
+        "measured_side_comparisons": {"type": "array"},
+        "closest_candidate_for_each_measured_side": {"type": "array"},
+        "room_candidate_ranking_by_two_widths": {"type": "array"},
+        "doorway_comparison": {"oneOf": [{"type": "null"}, {"type": "object"}]},
+        "ceiling_height_comparison": {"type": "object"},
+        "limitations": {"type": "array", "items": {"type": "string"}}
+      }
+    },
+    "room_geometry_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["polygon_area_m2", "polygon_perimeter_m", "dominant_axis_spans_m", "dominant_axis_rotation_deg", "status", "reason"],
+      "properties": {
+        "polygon_area_m2": {"type": "number", "minimum": 0},
+        "polygon_perimeter_m": {"type": "number", "minimum": 0},
+        "dominant_axis_spans_m": {"type": "array", "items": {"type": "number", "minimum": 0}, "minItems": 2, "maxItems": 2},
+        "dominant_axis_rotation_deg": {"type": "number"},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "room_floor_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["elevation_world_y_m", "height_above_global_floor_m", "supporting_points", "observed_p05_p95_span_m", "status", "reason"],
+      "properties": {
+        "elevation_world_y_m": {"type": ["number", "null"]},
+        "height_above_global_floor_m": {"type": ["number", "null"]},
+        "supporting_points": {"type": "integer", "minimum": 0},
+        "observed_p05_p95_span_m": {"oneOf": [{"type": "null"}, {"type": "array", "items": {"type": "number"}, "minItems": 2, "maxItems": 2}]},
+        "status": {"enum": ["candidate_unverified", "insufficient_data"]},
+        "reason": {"type": "string"}
+      }
+    },
+    "room_upper_candidates": {
+      "type": "object", "additionalProperties": false,
+      "required": ["supporting_points_in_height_range", "height_candidates", "status"],
+      "properties": {
+        "supporting_points_in_height_range": {"type": "integer", "minimum": 0},
+        "height_candidates": {"type": "array", "items": {"$ref": "#/$defs/room_upper_peak"}},
+        "status": {"enum": ["candidate_available", "insufficient_data"]}
+      }
+    },
+    "room_upper_peak": {
+      "type": "object", "additionalProperties": false,
+      "required": ["elevation_world_y_m", "height_above_local_floor_m", "supporting_points", "observed_half_width_m", "status", "reason"],
+      "properties": {
+        "elevation_world_y_m": {"type": "number"},
+        "height_above_local_floor_m": {"type": "number"},
+        "supporting_points": {"type": "integer", "minimum": 0},
+        "observed_half_width_m": {"type": "number", "minimum": 0},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "room_wall_link": {
+      "type": "object", "additionalProperties": false,
+      "required": ["wall_candidate_id", "length_m", "boundary_distance_m", "supporting_height_bands", "status"],
+      "properties": {
+        "wall_candidate_id": {"type": "string"},
+        "length_m": {"type": "number", "exclusiveMinimum": 0},
+        "boundary_distance_m": {"type": "number", "minimum": 0},
+        "supporting_height_bands": {"type": "array", "items": {"enum": ["lower", "current", "upper"]}},
+        "status": {"const": "unverified_spatial_association"}
+      }
+    },
+    "room_gap_link": {
+      "type": "object", "additionalProperties": false,
+      "required": ["wall_gap_candidate_id", "observed_width_m", "boundary_distance_m", "status"],
+      "properties": {
+        "wall_gap_candidate_id": {"type": "string"},
+        "observed_width_m": {"type": "number", "exclusiveMinimum": 0},
+        "boundary_distance_m": {"type": "number", "minimum": 0},
+        "status": {"const": "unverified_spatial_association"}
       }
     },
     "measurement": {
@@ -146,7 +228,12 @@
         "center_xz_m": {"$ref": "#/$defs/point2d"},
         "boundary_xz_m": {"type": "array", "items": {"$ref": "#/$defs/point2d"}, "minItems": 4},
         "status": {"const": "candidate_unverified"},
-        "reason": {"type": "string"}
+        "reason": {"type": "string"},
+        "geometry_candidate": {"$ref": "#/$defs/room_geometry_candidate"},
+        "floor_surface_candidate": {"$ref": "#/$defs/room_floor_candidate"},
+        "upper_surface_candidates": {"$ref": "#/$defs/room_upper_candidates"},
+        "nearby_wall_evidence": {"type": "array", "items": {"$ref": "#/$defs/room_wall_link"}},
+        "nearby_wall_gap_evidence": {"type": "array", "items": {"$ref": "#/$defs/room_gap_link"}}
       }
     },
     "opening_candidate": {

@@ -152,7 +152,8 @@ measurements. The output contract is documented in `schemas/plan.schema.json`.
 
 ```sh
 PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
-  --tier lidar --frame-step 10 --voxel-size 0.02 --output-dir runs/ceiling
+  --tier lidar --frame-step 10 --voxel-size 0.02 --output-dir runs/ceiling \
+  --ground-truth data/ground_truth/room_layout.json
 ```
 
 The output directory contains `point_cloud.npz`, `plan.png`, and `plan.json`.
@@ -166,6 +167,13 @@ strong height peaks in the upward pass. The estimates are written to
 ceilings, beams, or headers, and are not assigned to rooms. A one-pass capture
 still produces a floor candidate and combined point cloud, with ceiling height
 reported as insufficient data.
+
+Each raster room candidate also gets a rough polygon footprint, floor support,
+and local upper-surface peaks from points inside that region. When
+`--ground-truth` is supplied, the run writes `ground_truth_comparison.json`
+with numerical comparisons for the measured sides, doorway gap, and ceiling.
+Those matches remain unverified because the sketch and scan are not spatially
+registered, and rough region spans are not fitted wall lengths.
 
 The command also records and renders tentative wall traces in
 `wall_candidates.json` and `wall_candidates.png`. It estimates floor height,
@@ -220,7 +228,8 @@ python scripts/review_scan.py runs/ceiling
 ```
 
 Open the printed localhost address. The page shows the point-cloud preview and
-raster room, wall-supported outline, wall, and cross-height wall candidates. Candidate review marks stay in
+raster room, per-room metrics, measured comparisons, wall-supported outline,
+wall, and cross-height wall candidates. Candidate review marks stay in
 your browser; **Export review JSON** downloads them as `scan_review.json`.
 The review server reads result files and does not modify them. Stop it with
 Ctrl+C. The earlier report format does not include a point count; newer result

@@ -157,7 +157,20 @@ def render_room_candidate_preview(
                 linewidth=2, linestyle="--",
             ))
         center = candidate["center_xz_m"]
-        axis.text(center[0], center[1], candidate["id"], color="#9a4d00",
+        geometry = candidate.get("geometry_candidate", {})
+        spans = geometry.get("dominant_axis_spans_m", [])
+        span_text = " × ".join(f"{float(value):.2f}" for value in spans)
+        upper = candidate.get("upper_surface_candidates", {}).get("height_candidates", [])
+        upper_text = ", ".join(
+            f"{float(item['height_above_local_floor_m']):.2f} m"
+            for item in upper[:2]
+        )
+        label = str(candidate["id"])
+        if span_text:
+            label += f"\n{span_text} m rough spans"
+        if upper_text:
+            label += f"\nupper: {upper_text}"
+        axis.text(center[0], center[1], label, color="#9a4d00",
                   fontsize=8, ha="center", va="center",
                   bbox={"facecolor": "white", "alpha": 0.75, "edgecolor": "none"})
     for candidate in wall_room_candidates or []:

@@ -17,6 +17,7 @@ from .consensus import (
     find_consensus_walls,
     propose_wall_supported_rooms,
 )
+from .evaluation import compare_to_ground_truth
 from .openings import infer_opening_candidates, infer_wall_gap_candidates
 from .passes import NoPassSplitError, detect_camera_pass_split
 from .plan import build_plan_document, capture_label
@@ -28,6 +29,7 @@ from .render import (
     render_wall_candidate_preview,
 )
 from .rooms import detect_room_candidates
+from .room_metrics import attach_nearby_wall_evidence, measure_room_regions
 from .surfaces import detect_vertical_surface_candidates
 
 
@@ -40,6 +42,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--frame-step", type=int, default=10)
     parser.add_argument("--voxel-size", type=float, default=0.02, help="voxel width in metres")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/latest"))
+    parser.add_argument(
+        "--ground-truth", type=Path,
+        help="optional JSON measurements to compare with scan candidates",
+    )
     args = parser.parse_args(argv)
 
     if args.tier != "lidar":
@@ -126,8 +132,27 @@ def main(argv: list[str] | None = None) -> int:
         room_candidates = detect_room_candidates(
             points, grid_rotation_deg=room_grid_angle
         )
-        opening_candidates = infer_opening_candidates(wall_candidates, room_candidates)
+        room_candidates = measure_room_regions(
+            room_candidates,
+            floor_pass_points,
+            ceiling_pass_points,
+            float(surface_candidates["floor_height_candidate"]["elevation_world_y_m"]),
+            dominant_axis_deg=room_grid_angle,
+        )
         wall_gap_candidates = infer_wall_gap_candidates(wall_candidates)
+        room_candidates = attach_nearby_wall_evidence(
+            room_candidates, wall_candidates, wall_gap_candidates
+        )
+        opening_candidates = infer_opening_candidates(wall_candidates, room_candidates)
+        ground_truth_comparison = None
+        if args.ground_truth is not None:
+            ground_truth = json.loads(args.ground_truth.read_text(encoding="utf-8"))
+            ground_truth_comparison = compare_to_ground_truth(
+                room_candidates, wall_gap_candidates, ground_truth
+            )
+            (args.output_dir / "ground_truth_comparison.json").write_text(
+                json.dumps(ground_truth_comparison, indent=2) + "\n", encoding="utf-8"
+            )
         (args.output_dir / "room_candidates.json").write_text(
             json.dumps(room_candidates, indent=2) + "\n", encoding="utf-8"
         )
@@ -157,6 +182,7 @@ def main(argv: list[str] | None = None) -> int:
             wall_room_candidates=wall_room_candidates,
             pass_split=pass_split,
             surface_candidates=surface_candidates,
+            ground_truth_comparison=ground_truth_comparison,
         )
         (args.output_dir / "plan.json").write_text(
             json.dumps(document, indent=2) + "\n", encoding="utf-8"
@@ -183,6 +209,8 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Wall-gap candidates: {args.output_dir / 'wall_gap_candidates.json'}")
     print(f"Wall-supported room outlines: {args.output_dir / 'wall_room_candidates.json'}")
     print(f"Vertical surface candidates: {args.output_dir / 'vertical_surface_candidates.json'}")
+    if args.ground_truth is not None:
+        print(f"Ground-truth comparison: {args.output_dir / 'ground_truth_comparison.json'}")
     if pass_split is not None:
         print(
             f"Pass split: row {pass_split['split_row_index']} of "
