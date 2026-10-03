@@ -79,6 +79,20 @@ translation and rotation, and unusually large pose steps. These checks can
 flag discontinuities, but they do not measure accumulated tracking drift or
 the accuracy of the reconstructed room.
 
+For the two-pass ceiling-inclusive capture, compare the pitch-based pass split,
+recorded route closure, and wall-slice overlap before and after a single rigid
+alignment step:
+
+```sh
+PYTHONPATH=src python scripts/analyze_scan_drift.py
+```
+
+The ZIP is read directly without extraction. The command writes
+`runs/drift_analysis/drift_analysis.json` and `.png`. The rigid transform is a
+diagnostic ablation only; it is not applied to the reconstruction because a
+single transform cannot correct drift that changes along the route. All
+reported overlaps are repeatability checks, not ground-truth accuracy.
+
 To compare three strengths of a statistical outlier filter on the
 ceiling-inclusive point cloud, run:
 
