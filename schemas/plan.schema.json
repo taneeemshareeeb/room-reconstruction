@@ -81,15 +81,17 @@
     },
     "ground_truth_comparison": {
       "type": "object", "additionalProperties": true,
-      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "room_candidate_ranking_by_widths", "doorway_comparison", "bottom_wall_segment", "ceiling_height_comparison", "limitations"],
+      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "closest_nearby_wall_for_each_side", "room_candidate_ranking_by_widths", "doorway_comparison", "nearest_wall_gap_by_room_candidate", "bottom_wall_segment", "ceiling_height_comparison", "limitations"],
       "properties": {
         "status": {"const": "partial_unregistered_comparison"},
         "ground_truth_source": {"type": "string"},
         "spatial_registration": {"const": "not_available"},
         "measured_side_comparisons": {"type": "array"},
         "closest_candidate_for_each_measured_side": {"type": "array"},
+        "closest_nearby_wall_for_each_side": {"type": "array"},
         "room_candidate_ranking_by_widths": {"type": "array"},
         "doorway_comparison": {"oneOf": [{"type": "null"}, {"type": "object"}]},
+        "nearest_wall_gap_by_room_candidate": {"type": "array"},
         "bottom_wall_segment": {"oneOf": [{"type": "null"}, {"type": "object"}]},
         "ceiling_height_comparison": {"type": "object"},
         "limitations": {"type": "array", "items": {"type": "string"}}
@@ -234,7 +236,8 @@
         "floor_surface_candidate": {"$ref": "#/$defs/room_floor_candidate"},
         "upper_surface_candidates": {"$ref": "#/$defs/room_upper_candidates"},
         "nearby_wall_evidence": {"type": "array", "items": {"$ref": "#/$defs/room_wall_link"}},
-        "nearby_wall_gap_evidence": {"type": "array", "items": {"$ref": "#/$defs/room_gap_link"}}
+        "nearby_wall_gap_evidence": {"type": "array", "items": {"$ref": "#/$defs/room_gap_link"}},
+        "nearest_wall_gap_evidence": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/room_gap_link"}]}
       }
     },
     "opening_candidate": {

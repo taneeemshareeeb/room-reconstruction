@@ -230,11 +230,35 @@ def attach_nearby_wall_evidence(
                     "boundary_distance_m": round(distance, 3),
                     "status": "unverified_spatial_association",
                 })
+        nearest_gap = min(
+            nearby_gaps,
+            key=lambda item: item["boundary_distance_m"],
+            default=None,
+        )
+        if nearest_gap is None and wall_gap_candidates:
+            nearest = min(
+                wall_gap_candidates,
+                key=lambda gap: _distance_to_polygon(
+                    np.asarray(gap["center_xz_m"], dtype=np.float64), polygon
+                ),
+            )
+            nearest_gap = {
+                "wall_gap_candidate_id": str(nearest["id"]),
+                "observed_width_m": float(nearest["observed_gap_m"]),
+                "boundary_distance_m": round(
+                    _distance_to_polygon(
+                        np.asarray(nearest["center_xz_m"], dtype=np.float64), polygon
+                    ),
+                    3,
+                ),
+                "status": "unverified_spatial_association",
+            }
         nearby_walls.sort(key=lambda item: item["boundary_distance_m"])
         nearby_gaps.sort(key=lambda item: item["boundary_distance_m"])
         enriched.append({
             **room,
             "nearby_wall_evidence": nearby_walls[:8],
             "nearby_wall_gap_evidence": nearby_gaps[:4],
+            "nearest_wall_gap_evidence": nearest_gap,
         })
     return enriched

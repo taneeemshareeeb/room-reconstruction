@@ -58,10 +58,34 @@ def compare_to_ground_truth(
             })
     width_pair_ranking.sort(key=lambda item: item["mean_absolute_width_difference_m"])
     closest_side_matches = []
+    closest_nearby_wall_for_each_side = []
     for measurement_name in ("left_length", "right_length"):
         matches = [item for item in dimension_matches if item["measurement"] == measurement_name]
         if matches:
             closest_side_matches.append(min(matches, key=lambda item: item["absolute_difference_m"]))
+        measured_value = room.get(measurement_name)
+        if not isinstance(measured_value, dict) or "value" not in measured_value:
+            continue
+        wall_matches = []
+        for candidate in room_candidates:
+            for wall in candidate.get("nearby_wall_evidence", []):
+                wall_matches.append({
+                    "measurement": measurement_name,
+                    "measured_m": float(measured_value["value"]),
+                    "room_candidate_id": str(candidate["id"]),
+                    "wall_candidate_id": str(wall["wall_candidate_id"]),
+                    "candidate_wall_length_m": float(wall["length_m"]),
+                    "absolute_difference_m": round(
+                        abs(float(wall["length_m"]) - float(measured_value["value"])), 3
+                    ),
+                    "boundary_distance_m": float(wall["boundary_distance_m"]),
+                    "supporting_height_bands": wall["supporting_height_bands"],
+                    "status": "unverified_local_wall_length_match",
+                })
+        if wall_matches:
+            closest_nearby_wall_for_each_side.append(
+                min(wall_matches, key=lambda item: item["absolute_difference_m"])
+            )
 
     doorway = room.get("doorway", {})
     doorway_width = float(doorway["width"]) if isinstance(doorway, dict) and "width" in doorway else None
@@ -81,6 +105,17 @@ def compare_to_ground_truth(
             "status": "unverified_geometric_match" if closest_gap else "insufficient_data",
             "reason": "Width similarity alone does not establish that the gap is the measured doorway; the scan and sketch are not spatially registered.",
         }
+    room_gap_proximity = []
+    for candidate in room_candidates:
+        nearest = candidate.get("nearest_wall_gap_evidence")
+        if nearest is not None:
+            room_gap_proximity.append({
+                "room_candidate_id": str(candidate["id"]),
+                "wall_gap_candidate_id": str(nearest["wall_gap_candidate_id"]),
+                "observed_width_m": float(nearest["observed_width_m"]),
+                "distance_to_region_boundary_m": float(nearest["boundary_distance_m"]),
+                "status": "unverified_spatial_association",
+            })
 
     partial_bottom_wall = room.get("bottom_wall_segment_before_doorway", {})
     bottom_wall_record = None
@@ -109,14 +144,29 @@ def compare_to_ground_truth(
                 })
     ceiling_matches.sort(key=lambda item: item["absolute_difference_m"])
 
+    limitations = [
+        "Rough room spans are not fitted wall lengths and cannot establish which scan region is the measured room.",
+        "The measurement sketch and scan have no shared coordinate registration.",
+        "A close doorway width or ceiling height is numerical similarity only, not confirmation of identity.",
+    ]
+    if (
+        len(closest_nearby_wall_for_each_side) >= 2
+        and closest_nearby_wall_for_each_side[0]["wall_candidate_id"]
+        == closest_nearby_wall_for_each_side[1]["wall_candidate_id"]
+    ):
+        limitations.append(
+            "The closest scan wall trace matches both side lengths numerically; it is one segment and cannot independently confirm two room sides."
+        )
     return {
         "status": "partial_unregistered_comparison",
         "ground_truth_source": ground_truth.get("source", "user-provided measurements"),
         "spatial_registration": "not_available",
         "measured_side_comparisons": dimension_matches,
         "closest_candidate_for_each_measured_side": closest_side_matches,
+        "closest_nearby_wall_for_each_side": closest_nearby_wall_for_each_side,
         "room_candidate_ranking_by_widths": width_pair_ranking,
         "doorway_comparison": doorway_comparison,
+        "nearest_wall_gap_by_room_candidate": room_gap_proximity,
         "bottom_wall_segment": bottom_wall_record,
         "ceiling_height_comparison": {
             "measured_m": ceiling_height,
@@ -124,9 +174,5 @@ def compare_to_ground_truth(
             "all_room_peak_comparisons": ceiling_matches,
             "status": "unverified_height_match" if ceiling_matches else "insufficient_data",
         },
-        "limitations": [
-            "Rough room spans are not fitted wall lengths and cannot establish which scan region is the measured room.",
-            "The measurement sketch and scan have no shared coordinate registration.",
-            "A close doorway width or ceiling height is numerical similarity only, not confirmation of identity.",
-        ],
+        "limitations": limitations,
     }
