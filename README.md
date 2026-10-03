@@ -166,6 +166,26 @@ dimensions, and floor areas still need validation.
 Current floor-only and floor-and-ceiling candidate outputs are compared in
 [`reports/scan_candidate_comparison.md`](reports/scan_candidate_comparison.md).
 
+To review the existing ceiling-inclusive reports locally in a browser, run:
+
+```sh
+python scripts/review_scan.py reports --report-prefix single_scan_with_ceiling
+```
+
+For a new result folder created by the LiDAR command above, point the review
+page at that folder instead:
+
+```sh
+python scripts/review_scan.py runs/ceiling
+```
+
+Open the printed localhost address. The page shows the point-cloud preview and
+room, wall, and cross-height wall candidates. Candidate review marks stay in
+your browser; **Export review JSON** downloads them as `scan_review.json`.
+The review server reads result files and does not modify them. Stop it with
+Ctrl+C. The earlier report format does not include a point count; newer result
+folders include it.
+
 Set up the project and run the focused tests with:
 
 ```sh
