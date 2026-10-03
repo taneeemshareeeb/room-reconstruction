@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import itertools
+
 def compare_to_ground_truth(
     room_candidates: list[dict[str, object]],
     wall_gap_candidates: list[dict[str, object]],
@@ -11,7 +13,10 @@ def compare_to_ground_truth(
     room = ground_truth.get("room", {})
     if not isinstance(room, dict):
         raise ValueError("ground-truth document must contain a room object")
-    widths = [float(room[key]) for key in ("width_top", "width_bottom") if key in room]
+    if "top_width" in room:
+        widths = [float(room["top_width"])]
+    else:
+        widths = [float(room[key]) for key in ("width_top", "width_bottom") if key in room]
     spans_by_room: list[tuple[str, list[float]]] = []
     for candidate in room_candidates:
         geometry = candidate.get("geometry_candidate")
@@ -38,11 +43,14 @@ def compare_to_ground_truth(
                 "absolute_difference_m": round(abs(closest_span - measured_value), 2),
                 "status": "unverified_dimension_comparison",
             })
-        if len(widths) == 2:
+        if widths:
             errors = [
-                sum(abs(float(span) - float(target)) for span, target in zip(spans, pair)) / 2
-                for pair in (widths, widths[::-1])
+                sum(abs(float(span) - float(target)) for span, target in zip(spans, assignment))
+                / len(assignment)
+                for assignment in itertools.permutations(widths)
             ]
+            if len(widths) == 1:
+                errors = [min(abs(span - widths[0]) for span in spans)]
             width_pair_ranking.append({
                 "room_candidate_id": room_id,
                 "rough_spans_m": [round(value, 2) for value in sorted(spans, reverse=True)],
@@ -74,6 +82,15 @@ def compare_to_ground_truth(
             "reason": "Width similarity alone does not establish that the gap is the measured doorway; the scan and sketch are not spatially registered.",
         }
 
+    partial_bottom_wall = room.get("bottom_wall_segment_before_doorway", {})
+    bottom_wall_record = None
+    if isinstance(partial_bottom_wall, dict) and "value" in partial_bottom_wall:
+        bottom_wall_record = {
+            "measured_m": float(partial_bottom_wall["value"]),
+            "status": "recorded_partial_segment_not_spatially_registered",
+            "reason": "This is a partial wall before the doorway; no scan segment has been registered to it.",
+        }
+
     ceiling_height = float(room["ceiling_height"]) if "ceiling_height" in room else None
     ceiling_matches = []
     if ceiling_height is not None:
@@ -98,8 +115,9 @@ def compare_to_ground_truth(
         "spatial_registration": "not_available",
         "measured_side_comparisons": dimension_matches,
         "closest_candidate_for_each_measured_side": closest_side_matches,
-        "room_candidate_ranking_by_two_widths": width_pair_ranking,
+        "room_candidate_ranking_by_widths": width_pair_ranking,
         "doorway_comparison": doorway_comparison,
+        "bottom_wall_segment": bottom_wall_record,
         "ceiling_height_comparison": {
             "measured_m": ceiling_height,
             "closest_room_candidate_peak": ceiling_matches[0] if ceiling_matches else None,

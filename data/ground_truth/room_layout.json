@@ -1,28 +1,44 @@
 {
-  "source": "user-provided room_layout.png",
+  "source": "data/raw/IMG_7647.HEIC",
   "status": "provisional_manual_measurements",
   "units": "m",
   "room": {
-    "width_top": 3.36,
-    "width_bottom": 3.32,
+    "top_width": 3.14,
     "left_length": {
-      "value": 3.63,
+      "value": 3.72,
       "status": "remeasured"
     },
     "right_length": {
-      "value": 4.15,
+      "value": 3.77,
       "status": "remeasured"
     },
-    "ceiling_height": 2.63,
+    "bottom_wall_segment_before_doorway": {
+      "value": 2.65,
+      "status": "measured_partial_wall"
+    },
+    "ceiling_height": 2.71,
     "doorway": {
-      "width": 0.85,
+      "width": 0.93,
       "location": "bottom wall, near right corner"
     }
   },
+  "superseded_measurements": {
+    "source": "earlier room_layout.png",
+    "room": {
+      "width_top": 3.36,
+      "width_bottom": 3.32,
+      "left_length": 3.63,
+      "right_length": 4.15,
+      "ceiling_height": 2.63,
+      "doorway_width": 0.85
+    },
+    "status": "superseded_by_new_diagram"
+  },
   "notes": [
-    "The left and right wall lengths were remeasured and match the reported values; retain them as separate sides.",
-    "The sketch is a schematic location reference; do not force the room outline to be rectangular or parallel-sided.",
-    "The two width measurements differ by 0.04 m.",
-    "The two remeasured side lengths differ by 0.52 m; this is part of the current room-shape reference."
+    "The drawing is schematic and is not a reliable representation of the room outline.",
+    "The 2.65 m measurement is the bottom wall section before the doorway, not the full room width.",
+    "The 0.93 m doorway is drawn on the bottom wall near the right corner.",
+    "The height label is read as 2.71 m and interpreted as ceiling height.",
+    "Several centimeter-scale step offsets are written near the stepped edges, but their exact segment assignments are unclear and they have not been encoded as geometry."
   ]
 }

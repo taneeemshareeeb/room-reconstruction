@@ -81,15 +81,16 @@
     },
     "ground_truth_comparison": {
       "type": "object", "additionalProperties": true,
-      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "room_candidate_ranking_by_two_widths", "doorway_comparison", "ceiling_height_comparison", "limitations"],
+      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "room_candidate_ranking_by_widths", "doorway_comparison", "bottom_wall_segment", "ceiling_height_comparison", "limitations"],
       "properties": {
         "status": {"const": "partial_unregistered_comparison"},
         "ground_truth_source": {"type": "string"},
         "spatial_registration": {"const": "not_available"},
         "measured_side_comparisons": {"type": "array"},
         "closest_candidate_for_each_measured_side": {"type": "array"},
-        "room_candidate_ranking_by_two_widths": {"type": "array"},
+        "room_candidate_ranking_by_widths": {"type": "array"},
         "doorway_comparison": {"oneOf": [{"type": "null"}, {"type": "object"}]},
+        "bottom_wall_segment": {"oneOf": [{"type": "null"}, {"type": "object"}]},
         "ceiling_height_comparison": {"type": "object"},
         "limitations": {"type": "array", "items": {"type": "string"}}
       }
