@@ -61,7 +61,7 @@ def build_plan_document(
             "cross_height_wall_support": "candidate_available",
             "wall_gaps": "candidate_available",
             "wall_supported_room_outlines": "candidate_available",
-            "floor_area": "candidate_available",
+            "floor_area": "not_implemented",
             "room_surface_measurements": "candidate_available",
             "floor_elevation": (
                 "candidate_available" if surface_candidates["floor_height_candidate"]
@@ -73,8 +73,9 @@ def build_plan_document(
             "damage": "not_implemented",
             "concealed_damage": "not_implemented",
             "scope_estimation": "not_implemented",
-            "photos_tier": "not_implemented",
-            "video_tier": "not_implemented",
+            "photos_tier": "candidate_available",
+            "video_tier": "candidate_available",
+            "visual_overlap": "candidate_available",
         },
         "artifacts": {
             "point_cloud": "point_cloud.npz",
@@ -99,6 +100,7 @@ def build_plan_document(
             "Wall gaps are geometric interruptions and are not confirmed doorways.",
             "Wall-supported room outlines require visual and measured review; partial side coverage does not prove a complete wall.",
             "Floor elevation is a pass-level candidate; ceiling-height peaks are not assigned to rooms or confirmed as ceilings.",
+            "Photo/video tiers provide image-space overlap diagnostics only; they do not produce metric 3D geometry.",
             "Verified room boundaries, dimensions, openings, damage, and scope items are not available.",
         ],
     }

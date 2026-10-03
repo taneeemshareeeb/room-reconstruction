@@ -18,6 +18,7 @@ from .consensus import (
     propose_wall_supported_rooms,
 )
 from .evaluation import compare_to_ground_truth
+from .image_tiers import process_image_tier, visual_plan_document
 from .openings import infer_opening_candidates, infer_wall_gap_candidates
 from .passes import NoPassSplitError, detect_camera_pass_split
 from .plan import build_plan_document, capture_label
@@ -41,6 +42,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--tier", choices=("photos", "video", "lidar"), default="lidar")
     parser.add_argument("--frame-step", type=int, default=10)
     parser.add_argument("--voxel-size", type=float, default=0.02, help="voxel width in metres")
+    parser.add_argument("--sample-seconds", type=float, default=1.0,
+                        help="video frame sampling interval for --tier video")
     parser.add_argument("--output-dir", type=Path, default=Path("runs/latest"))
     parser.add_argument(
         "--ground-truth", type=Path,
@@ -48,8 +51,30 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
 
-    if args.tier != "lidar":
-        parser.error(f"the {args.tier} tier is not implemented yet; currently supported: lidar")
+    if args.tier in {"photos", "video"}:
+        try:
+            analysis = process_image_tier(
+                args.capture, tier=args.tier, output_dir=args.output_dir,
+                sample_seconds=args.sample_seconds,
+            )
+            plan = visual_plan_document(
+                tier=args.tier, capture=capture_label(args.capture), image_analysis=analysis
+            )
+            (args.output_dir / "plan.json").write_text(
+                json.dumps(plan, indent=2) + "\n", encoding="utf-8"
+            )
+        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+            print(f"Could not process {args.tier} capture: {exc}", file=sys.stderr)
+            return 1
+        print(
+            f"Status: partial ({analysis['image_count']} images, "
+            f"{analysis['registered_adjacent_pairs']} adjacent feature registrations; "
+            "metric room geometry unavailable)"
+        )
+        print(f"Result: {args.output_dir / 'plan.json'}")
+        print(f"Visual mosaic: {args.output_dir / 'plan.png'}")
+        print(f"Overlap analysis: {args.output_dir / 'image_analysis.json'}")
+        return 0
     try:
         loader = (
             load_archive_point_cloud
@@ -61,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         ceiling_pass_points = None
         try:
             pass_split = detect_camera_pass_split(args.capture)
-        except NoPassSplitError:
+        except (NoPassSplitError, ValueError):
             pass
         if pass_split is not None:
             split_row = int(pass_split["split_row_index"])

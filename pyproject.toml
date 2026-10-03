@@ -13,6 +13,8 @@ dependencies = [
     "Pillow>=9.0",
     "scipy>=1.10",
     "matplotlib>=3.8",
+    "opencv-python-headless>=4.10,<5",
+    "pillow-heif>=0.16",
 ]
 
 [tool.setuptools.packages.find]

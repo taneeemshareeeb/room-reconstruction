@@ -13,6 +13,11 @@
     button,select { font:inherit } button { border:1px solid var(--line); border-radius:9px; padding:9px 13px; background:white; color:var(--ink); cursor:pointer } button:hover { border-color:#9db5a8 } button.primary { background:var(--green); color:white; border-color:var(--green) }
     main { padding:24px clamp(18px,4vw,54px) 54px; max-width:1600px; margin:auto }
     .notice { display:none; padding:12px 15px; background:#fff4e7; border:1px solid #f0d0a7; border-radius:10px; margin-bottom:16px }
+    .processor { margin:0 0 18px; padding:15px; border:1px solid var(--line); border-radius:12px; background:#fff; display:grid; grid-template-columns:2fr 1fr repeat(3,minmax(110px,.7fr)) auto; gap:10px; align-items:end }
+    [hidden] { display:none !important }
+    .processor label { display:grid; gap:4px; color:var(--muted); font-size:12px }
+    .processor input,.processor select { width:100%; min-width:0; padding:9px; border:1px solid var(--line); border-radius:8px; color:var(--ink); background:white; font:inherit }
+    .job-status { grid-column:1/-1; color:var(--muted); font-size:13px; min-height:1em }
     .stats { display:grid; grid-template-columns:repeat(5,minmax(100px,1fr)); gap:12px; margin:0 0 18px }
     .stat { padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:white } .stat strong { display:block; font-size:22px; letter-spacing:-.04em } .stat span { color:var(--muted); font-size:12px }
     .layout { display:grid; grid-template-columns:minmax(0,1.75fr) minmax(310px,.9fr); gap:17px; align-items:start }
@@ -33,6 +38,7 @@
     .foot { color:var(--muted); margin-top:18px; font-size:12px }
     @media(max-width:900px) { .layout { grid-template-columns:1fr } .candidate-list { max-height:420px } }
     @media(max-width:600px) { header { align-items:flex-start; flex-direction:column } .stats { grid-template-columns:repeat(2,1fr) } .image-wrap { min-height:230px } }
+    @media(max-width:1000px) { .processor { grid-template-columns:repeat(2,minmax(0,1fr)) } .processor .capture-input { grid-column:1/-1 } }
   </style>
 </head>
 <body>
@@ -41,6 +47,15 @@
     <button class="primary" id="export">Export review JSON</button>
   </header>
   <main>
+    <form class="processor" id="processor" hidden>
+      <label class="capture-input">Capture path under data/raw<input name="capture" required placeholder="data/raw/single_scan_with_ceiling.zip"></label>
+      <label>Input tier<select name="tier"><option value="lidar">LiDAR</option><option value="video">Video</option><option value="photos">Photos</option></select></label>
+      <label>Frame step (LiDAR)<input name="frame_step" type="number" min="1" value="10"></label>
+      <label>Voxel metres (LiDAR)<input name="voxel_size_m" type="number" min="0.001" step="0.005" value="0.02"></label>
+      <label>Video sample seconds<input name="sample_seconds" type="number" min="0.1" step="0.5" value="1"></label>
+      <button class="primary" type="submit">Process capture</button>
+      <div class="job-status" id="job-status" role="status"></div>
+    </form>
     <div class="notice" id="notice"></div>
     <section class="stats" id="stats"></section>
     <div class="layout">
@@ -54,9 +69,10 @@
         <div class="candidate-list" id="candidate-list"></div>
       </section>
     </div>
-    <p class="foot">Candidates are unverified. Your marks stay in this browser until you export them. The scan results are served read only from your computer.</p>
+    <p class="foot">Geometry candidates are unverified. Review marks stay in this browser until you export them. Processing reads the selected project input and writes results to the configured runs folder.</p>
   </main>
   <script>
+    const APP_MODE = __APP_MODE__;
     const views = [
       {key:"overview", label:"Point cloud", image:"plan.png", note:"Projected point cloud preview. This is not a floor plan."},
       {key:"rooms", label:"Raster rooms", image:"room_candidates.png", note:"Dashed orange outlines are enclosed-region candidates; solid green outlines are supported wall loops. Both need review."},
@@ -65,12 +81,21 @@
       {key:"wall_rooms", label:"Wall outlines", image:"room_candidates.png", note:"Solid green outlines join four cross-height wall segments when each side has at least 70% direct scan support. These remain unverified hypotheses."},
       {key:"walls", label:"Walls", image:"wall_candidates.png", note:"Wall traces are candidates; support counts indicate cross-height consistency, not accuracy."},
       {key:"gaps", label:"Door / gaps", image:"room_candidates.png", note:"Aligned wall interruptions are possible openings or missing scan evidence; they are not classified as doors."},
-      {key:"consensus", label:"Shared traces", image:"cross_height_wall_candidates.png", note:"Segments that line up across height bands. Agreement is not ground truth."}
+      {key:"consensus", label:"Shared traces", image:"cross_height_wall_candidates.png", note:"Segments that line up across height bands. Agreement is not ground truth."},
+      {key:"overlap", label:"Image overlap", image:"plan.png", note:"Adjacent-image homography matches and registration status. Mosaic drift is possible; metric 3D geometry is unavailable."}
     ];
     let data = null, active = "overview";
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
     const itemsFor = key => {
       if (key === "rooms") return data.files.rooms || [];
+      if (key === "overlap") {
+        const analysis=data.files.image_analysis || {};
+        return (analysis.adjacent_pair_matches || []).map(match=>({
+          id:`image pair ${match.from_image_index + 1} → ${match.to_image_index + 1}`,
+          status:match.status,
+          match,
+        }));
+      }
       if (key === "metrics") return ((data.files.plan || {}).room_candidates) || [];
       if (key === "checks") {
         const comparison=((data.files.plan || {}).ground_truth_comparison) || {};
@@ -97,12 +122,23 @@
     function renderStats() {
       const plan = data.files.plan || {}, processing = plan.processing || {};
       const pointCount = processing.point_count == null ? "—" : Number(processing.point_count).toLocaleString();
-      const entries = [["Points", pointCount], ["Raster rooms", (data.files.rooms || []).length], ["Wall outlines", (data.files.wall_rooms || []).length], ["Wall candidates", (data.files.walls || []).length], ["Wall gaps", (data.files.wall_gaps || []).length], ["Shared wall traces", ((data.files.consensus || {}).cross_band_consensus_candidates || []).length]];
+      const tier=((plan.capture || {}).tier) || "lidar", analysis=data.files.image_analysis || {};
+      const entries = tier === "photos" || tier === "video"
+        ? [["Tier", tier], ["Images / frames", analysis.image_count || 0], ["Pair registrations", analysis.registered_adjacent_pairs || 0], ["Preview", analysis.preview_kind || "unavailable"], ["Metric geometry", "Unavailable"]]
+        : [["Points", pointCount], ["Raster rooms", (data.files.rooms || []).length], ["Wall outlines", (data.files.wall_rooms || []).length], ["Wall candidates", (data.files.walls || []).length], ["Wall gaps", (data.files.wall_gaps || []).length], ["Shared wall traces", ((data.files.consensus || {}).cross_band_consensus_candidates || []).length]];
       document.querySelector("#stats").innerHTML = entries.map(([label,value]) => `<div class="stat"><strong>${esc(value)}</strong><span>${label}</span></div>`).join("");
-      document.querySelector("#capture-label").textContent = `${((plan.capture || {}).id) || "Scan results"} · every ${processing.frame_step || "?"} frame · ${processing.voxel_size_m ?? "?"} m voxels`;
+      const tier=((plan.capture || {}).tier) || "lidar";
+      document.querySelector("#capture-label").textContent = tier === "lidar"
+        ? `${((plan.capture || {}).id) || "Scan results"} · LiDAR · every ${processing.frame_step || "?"} frame · ${processing.voxel_size_m ?? "?"} m voxels`
+        : `${((plan.capture || {}).id) || "Image results"} · ${tier} · metric geometry unavailable`;
     }
     function renderTabs() {
-      document.querySelector("#tabs").innerHTML = views.map(view => `<button class="tab ${active===view.key?"active":""}" data-view="${view.key}">${view.label}</button>`).join("");
+      const tier=((data.files.plan || {}).capture || {}).tier;
+      const visible=views.filter(view=>tier === "photos" || tier === "video" ? ["overview","overlap"].includes(view.key) : view.key !== "overlap");
+      document.querySelector("#tabs").innerHTML = visible.map(view => {
+        const label=view.key === "overview" && tier !== "lidar" ? (tier === "video" ? "Video mosaic" : "Photo mosaic") : view.label;
+        return `<button class="tab ${active===view.key?"active":""}" data-view="${view.key}">${label}</button>`;
+      }).join("");
       document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => { active=button.dataset.view; render(); }));
     }
     function renderImage() {
@@ -112,6 +148,7 @@
       wrap.innerHTML=`<img src="/artifact/${view.image}" alt="${esc(view.label)} preview">`;
     }
     function describe(item, key) {
+      if (key === "overlap") { const m=item.match || {}; return `${m.status} · ${m.good_matches || 0} feature matches · ${m.ransac_inliers || 0} geometric inliers (${Math.round(100*(m.inlier_fraction || 0))}%)`; }
       if (key === "rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² estimated · center ${item.center_xz_m?.map(v=>Number(v).toFixed(2)).join(", ")} m`;
       if (key === "metrics") {
         const geometry=item.geometry_candidate || {}, floor=item.floor_surface_candidate || {}, upper=item.upper_surface_candidates || {};
@@ -140,7 +177,7 @@
     }
     function renderCandidates() {
       const list=itemsFor(active), listEl=document.querySelector("#candidate-list"), currentMarks=marks();
-      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces"}[active]);
+      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces",overlap:"Adjacent image overlap"}[active]);
       document.querySelector("#list-count").textContent = active === "overview" ? "" : `${list.length} total`;
       if (active === "overview") { listEl.innerHTML='<div class="empty">Choose a preview tab to inspect candidate details. Use the buttons on each candidate to record your visual review, then export the marks as JSON.</div>'; return; }
       if (!list.length) { listEl.innerHTML='<div class="empty">No candidates in this result.</div>'; return; }
@@ -159,10 +196,33 @@
       const link=document.createElement("a"), blob=new Blob([JSON.stringify(output,null,2)+"\n"],{type:"application/json"});
       link.href=URL.createObjectURL(blob); link.download="scan_review.json"; link.click(); URL.revokeObjectURL(link.href);
     });
-    fetch("/api/results").then(response => { if(!response.ok) throw new Error(`HTTP ${response.status}`); return response.json(); }).then(result => {
+    async function loadResults() {
+      const response=await fetch("/api/results",{cache:"no-store"}); if(!response.ok) throw new Error(`HTTP ${response.status}`);
+      const result=await response.json();
       data=result; renderStats(); render();
       if (result.errors.length) { const notice=document.querySelector("#notice"); notice.style.display="block"; notice.textContent=result.errors.join(" · "); }
-    }).catch(error => { document.querySelector("#capture-label").textContent="Could not load results"; document.querySelector("#image-wrap").innerHTML=`<div class="empty">${esc(error.message)}. Check that the server is pointed at a generated result folder.</div>`; });
+    }
+    loadResults().catch(error => { document.querySelector("#capture-label").textContent="Could not load results"; document.querySelector("#image-wrap").innerHTML=`<div class="empty">${esc(error.message)}. Check that the server is pointed at a generated result folder.</div>`; });
+    if (APP_MODE) {
+      const form=document.querySelector("#processor"), status=document.querySelector("#job-status");
+      form.hidden=false;
+      form.addEventListener("submit",async event=>{
+        event.preventDefault();
+        const fields=Object.fromEntries(new FormData(form).entries());
+        status.textContent="Starting capture processing…";
+        try {
+          const response=await fetch("/api/process",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(fields)});
+          const result=await response.json(); if(!response.ok) throw new Error(result.error || `HTTP ${response.status}`);
+          while(true) {
+            await new Promise(resolve=>setTimeout(resolve,1000));
+            const job=await (await fetch("/api/job",{cache:"no-store"})).json();
+            if(job.status === "running") { status.textContent=`Processing ${job.capture} (${job.tier})…`; continue; }
+            if(job.status === "complete") { status.textContent=job.stdout || "Processing complete."; active="overview"; await loadResults(); break; }
+            if(job.status === "failed") throw new Error(job.stderr || "Processing failed.");
+          }
+        } catch(error) { status.textContent=`Processing failed: ${error.message}`; }
+      });
+    }
   </script>
 </body>
 </html>

@@ -144,11 +144,14 @@ agreement only shows repeatability across slices.
 
 ## Running the reconstruction app
 
-The first runnable milestone accepts one LiDAR capture directory or ZIP. It
-applies the confidence mask, transforms sampled depth pixels into world
-coordinates, and writes a point cloud, previews, and a versioned JSON result.
-It reports unverified room and wall candidates, not confirmed room geometry or
-measurements. The output contract is documented in `schemas/plan.schema.json`.
+The reconstruction command accepts LiDAR, photo, or video inputs. LiDAR reads a
+capture directory or ZIP, applies the confidence mask, transforms sampled depth
+pixels into world coordinates, and writes a point cloud, previews, and a
+versioned JSON result. Photo and video modes decode the selected images/frames,
+estimate adjacent-frame feature matches, and write a bounded visual mosaic (or
+a contact sheet when a stable global mosaic cannot be formed). Those image
+tiers do not infer metric 3D room geometry: their JSON marks dimensions,
+ceiling height, and floor area as unavailable instead of guessing.
 
 ```sh
 PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
@@ -156,9 +159,27 @@ PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
   --ground-truth data/ground_truth/room_layout.json
 ```
 
-The output directory contains `point_cloud.npz`, `plan.png`, and `plan.json`.
-Photo and video capture tiers are not wired up yet; the command reports that
-clearly instead of returning fabricated geometry.
+The LiDAR output directory contains `point_cloud.npz`, `plan.png`, and
+`plan.json`, plus wall, room, surface, and opening candidate files.
+
+For a folder of HEIC/JPEG/PNG photos, run:
+
+```sh
+PYTHONPATH=src python run.py data/raw --tier photos --output-dir runs/photos
+```
+
+For one MP4/MOV video, sample a frame every two seconds:
+
+```sh
+PYTHONPATH=src python run.py path/to/walkthrough.mp4 --tier video \
+  --sample-seconds 2 --output-dir runs/video
+```
+
+Photo/video output includes `plan.png` (mosaic candidate or contact sheet),
+`image_analysis.json` (per-pair feature-match counts), and `plan.json`. The
+visual mosaic is an image-space overlap aid, not a floor plan, a 3D model, or
+dimensioned reconstruction. For metric results use LiDAR input with valid
+depth, calibrated intrinsics, and pose metadata.
 
 When pose metadata shows the downward-looking and upward-looking passes, the
 runner detects their split, analyzes the floor pass separately, and looks for
@@ -214,7 +235,18 @@ The schematic room reference and current scan comparison are summarized in
 The left and right wall lengths were remeasured as distinct sides; the room
 outline and corner geometry still need to be recorded before comparing area.
 
-To review the existing ceiling-inclusive reports locally in a browser, run:
+To start the local Room Reconstruction app, run:
+
+```sh
+PYTHONPATH=src python scripts/review_scan.py runs/latest --app
+```
+
+Open the printed localhost address, enter a capture path inside this project
+(for example `data/raw/single_scan_with_ceiling.zip` or `data/raw`), choose a
+tier, and select **Process capture**. Results are written under `runs/latest`
+and appear in the review page when processing finishes. The local app only
+binds to localhost and does not upload input files. You can also review an
+existing result folder without enabling processing:
 
 ```sh
 python scripts/review_scan.py reports --report-prefix single_scan_with_ceiling
