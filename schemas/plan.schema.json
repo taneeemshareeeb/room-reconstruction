@@ -81,7 +81,7 @@
     },
     "ground_truth_comparison": {
       "type": "object", "additionalProperties": true,
-      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "closest_nearby_wall_for_each_side", "room_candidate_ranking_by_widths", "doorway_comparison", "nearest_wall_gap_by_room_candidate", "bottom_wall_segment", "ceiling_height_comparison", "limitations"],
+      "required": ["status", "ground_truth_source", "spatial_registration", "measured_side_comparisons", "closest_candidate_for_each_measured_side", "closest_nearby_wall_for_each_side", "distinct_side_wall_checks_by_room_candidate", "room_candidate_ranking_by_widths", "doorway_comparison", "nearest_wall_gap_by_room_candidate", "bottom_wall_segment", "ceiling_height_comparison", "limitations"],
       "properties": {
         "status": {"const": "partial_unregistered_comparison"},
         "ground_truth_source": {"type": "string"},
@@ -89,6 +89,7 @@
         "measured_side_comparisons": {"type": "array"},
         "closest_candidate_for_each_measured_side": {"type": "array"},
         "closest_nearby_wall_for_each_side": {"type": "array"},
+        "distinct_side_wall_checks_by_room_candidate": {"type": "array"},
         "room_candidate_ranking_by_widths": {"type": "array"},
         "doorway_comparison": {"oneOf": [{"type": "null"}, {"type": "object"}]},
         "nearest_wall_gap_by_room_candidate": {"type": "array"},

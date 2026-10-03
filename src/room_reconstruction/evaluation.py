@@ -106,6 +106,7 @@ def compare_to_ground_truth(
             "reason": "Width similarity alone does not establish that the gap is the measured doorway; the scan and sketch are not spatially registered.",
         }
     room_gap_proximity = []
+    room_distinct_wall_checks = []
     for candidate in room_candidates:
         nearest = candidate.get("nearest_wall_gap_evidence")
         if nearest is not None:
@@ -116,6 +117,63 @@ def compare_to_ground_truth(
                 "distance_to_region_boundary_m": float(nearest["boundary_distance_m"]),
                 "status": "unverified_spatial_association",
             })
+        side_measurements = []
+        for side_name in ("left_length", "right_length"):
+            side = room.get(side_name)
+            if isinstance(side, dict) and "value" in side:
+                side_measurements.append((side_name, float(side["value"])))
+        nearby_walls = candidate.get("nearby_wall_evidence", [])
+        assignment_size = min(len(side_measurements), len(nearby_walls))
+        assignments = []
+        if assignment_size:
+            for selected in itertools.permutations(nearby_walls, assignment_size):
+                for target_indices in itertools.combinations(range(len(side_measurements)), assignment_size):
+                    pairs = [
+                        (side_measurements[index], wall)
+                        for index, wall in zip(target_indices, selected)
+                    ]
+                    error = sum(
+                        abs(float(wall["length_m"]) - measured)
+                        for (_, measured), wall in pairs
+                    )
+                    assignments.append((error, pairs))
+        best_assignment = min(assignments, key=lambda item: item[0], default=(0.0, []))[1]
+        distinct_matches = []
+        matched_names = set()
+        for (side_name, measured), wall in best_assignment:
+            matched_names.add(side_name)
+            difference = abs(float(wall["length_m"]) - measured)
+            distinct_matches.append({
+                "measurement": side_name,
+                "measured_m": measured,
+                "wall_candidate_id": str(wall["wall_candidate_id"]),
+                "candidate_wall_length_m": float(wall["length_m"]),
+                "absolute_difference_m": round(difference, 3),
+                "boundary_distance_m": float(wall["boundary_distance_m"]),
+                "supporting_height_bands": wall["supporting_height_bands"],
+                "status": "length_compatible_candidate" if difference <= 0.2 else "weak_length_match",
+            })
+        for side_name, measured in side_measurements:
+            if side_name not in matched_names:
+                distinct_matches.append({
+                    "measurement": side_name,
+                    "measured_m": measured,
+                    "wall_candidate_id": None,
+                    "candidate_wall_length_m": None,
+                    "absolute_difference_m": None,
+                    "boundary_distance_m": None,
+                    "supporting_height_bands": [],
+                    "status": "insufficient_distinct_wall_evidence",
+                })
+        room_distinct_wall_checks.append({
+            "room_candidate_id": str(candidate["id"]),
+            "distinct_side_wall_match_count": sum(
+                item["status"] == "length_compatible_candidate" for item in distinct_matches
+            ),
+            "side_measurement_count": len(side_measurements),
+            "matches": distinct_matches,
+            "status": "unverified_distinct_wall_assignment",
+        })
 
     partial_bottom_wall = room.get("bottom_wall_segment_before_doorway", {})
     bottom_wall_record = None
@@ -167,6 +225,7 @@ def compare_to_ground_truth(
         "room_candidate_ranking_by_widths": width_pair_ranking,
         "doorway_comparison": doorway_comparison,
         "nearest_wall_gap_by_room_candidate": room_gap_proximity,
+        "distinct_side_wall_checks_by_room_candidate": room_distinct_wall_checks,
         "bottom_wall_segment": bottom_wall_record,
         "ceiling_height_comparison": {
             "measured_m": ceiling_height,

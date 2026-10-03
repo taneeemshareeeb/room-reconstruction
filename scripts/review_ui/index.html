@@ -77,6 +77,7 @@
         const records=[];
         for (const match of comparison.closest_candidate_for_each_measured_side || []) records.push({id:`${match.measurement} · ${match.closest_room_candidate_id}`,kind:"side",data:match});
         for (const match of comparison.closest_nearby_wall_for_each_side || []) records.push({id:`${match.measurement} wall trace · ${match.wall_candidate_id}`,kind:"wall_length",data:match});
+        for (const candidate of comparison.distinct_side_wall_checks_by_room_candidate || []) records.push({id:`distinct wall check · ${candidate.room_candidate_id}`,kind:"distinct_walls",data:candidate});
         for (const match of comparison.room_candidate_ranking_by_widths || []) records.push({id:`width check · ${match.room_candidate_id}`,kind:"width",data:match});
         for (const match of comparison.nearest_wall_gap_by_room_candidate || []) records.push({id:`nearest gap · ${match.room_candidate_id}`,kind:"gap_distance",data:match});
         if (comparison.bottom_wall_segment) records.push({id:"bottom wall before doorway",kind:"partial_wall",data:comparison.bottom_wall_segment});
@@ -125,6 +126,7 @@
         const v=item.data || {};
         if (item.kind === "side") return `${Number(v.measured_m).toFixed(2)} m measured · rough span ${Number(v.closest_rough_span_m).toFixed(2)} m · difference ${Number(v.absolute_difference_m).toFixed(2)} m`;
         if (item.kind === "wall_length") return `${Number(v.measured_m).toFixed(2)} m measured · scan trace ${Number(v.candidate_wall_length_m).toFixed(2)} m · difference ${Number(v.absolute_difference_m).toFixed(2)} m · ${v.room_candidate_id}, ${v.boundary_distance_m} m from outline · ${(v.supporting_height_bands || []).join(", ")}`;
+        if (item.kind === "distinct_walls") return `${v.distinct_side_wall_match_count}/${v.side_measurement_count} side lengths have separate nearby wall traces · ${v.matches.map(m=>`${m.measurement}: ${m.wall_candidate_id ? `${Number(m.candidate_wall_length_m).toFixed(2)} m (${Number(m.absolute_difference_m).toFixed(2)} m difference)` : "no distinct trace"}`).join(" · ")} · length assignment only, room sides are not spatially registered`;
         if (item.kind === "width") return `rough spans ${v.rough_spans_m?.map(n=>Number(n).toFixed(2)).join(" × ")} m · width difference ${Number(v.mean_absolute_width_difference_m).toFixed(2)} m`;
         if (item.kind === "partial_wall") return `${Number(v.measured_m).toFixed(2)} m measured · partial wall, not mapped to scan yet`;
         if (item.kind === "gap_distance") return `gap ${Number(v.observed_width_m).toFixed(2)} m · ${Number(v.distance_to_region_boundary_m).toFixed(2)} m from this region boundary`;
