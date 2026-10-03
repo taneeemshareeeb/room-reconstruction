@@ -132,10 +132,9 @@ agreement only shows repeatability across slices.
 
 The first runnable milestone accepts one LiDAR capture directory or ZIP. It
 applies the confidence mask, transforms sampled depth pixels into world
-coordinates, and writes a point cloud, a preview image, and a versioned JSON
-result. It does not yet infer rooms or measurements. The image is labeled as a
-point-cloud preview, not a floor plan. The output contract is documented in
-`schemas/plan.schema.json`.
+coordinates, and writes a point cloud, previews, and a versioned JSON result.
+It reports unverified room and wall candidates, not confirmed room geometry or
+measurements. The output contract is documented in `schemas/plan.schema.json`.
 
 ```sh
 PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
@@ -149,7 +148,13 @@ clearly instead of returning fabricated geometry.
 The command also records and renders tentative wall traces in
 `wall_candidates.json` and `wall_candidates.png`. It estimates floor height,
 uses a horizontal slice about 0.85–1.55 m above that estimate, and fits line
-segments to the slice. These are candidate walls, not verified walls.
+segments to the slice. Each wall entry now lists which lower, current, and
+upper height bands have the strongest matching evidence on an overlapping
+subsection; `cross_height_consensus_ids` links to the exact shared segments.
+This count is a consistency hint, not a confidence or accuracy score. Shared
+line segments are written to
+`cross_height_wall_candidates.json` and rendered in
+`cross_height_wall_candidates.png`. All remain unverified candidates.
 It also lists enclosed-region candidates in `room_candidates.json` and
 `room_candidates.png`. Dashed outlines trace the occupied grid boundary; they
 are candidates, not verified room geometry or survey-grade floor areas.

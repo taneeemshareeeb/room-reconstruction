@@ -10,13 +10,18 @@ from pathlib import Path
 
 import numpy as np
 
-from .plan import build_plan_document, capture_label
-from .geometry import detect_wall_candidates
+from .consensus import (
+    annotate_current_wall_support,
+    detect_wall_candidates_by_height,
+    find_consensus_walls,
+)
 from .openings import infer_opening_candidates
+from .plan import build_plan_document, capture_label
 from .pointcloud import load_archive_point_cloud, load_capture_point_cloud
 from .render import (
     render_point_cloud_preview,
     render_room_candidate_preview,
+    render_wall_consensus_preview,
     render_wall_candidate_preview,
 )
 from .rooms import detect_room_candidates
@@ -48,12 +53,25 @@ def main(argv: list[str] | None = None) -> int:
         render_point_cloud_preview(
             points, str(args.output_dir / "plan.png"), capture_label(args.capture)
         )
-        wall_candidates = detect_wall_candidates(points)
+        candidates_by_band = detect_wall_candidates_by_height(points)
+        cross_height_wall_candidates = find_consensus_walls(candidates_by_band)
+        wall_candidates = annotate_current_wall_support(
+            candidates_by_band["current"], cross_height_wall_candidates
+        )
         (args.output_dir / "wall_candidates.json").write_text(
             json.dumps(wall_candidates, indent=2) + "\n", encoding="utf-8"
         )
+        (args.output_dir / "cross_height_wall_candidates.json").write_text(
+            json.dumps(cross_height_wall_candidates, indent=2) + "\n", encoding="utf-8"
+        )
         render_wall_candidate_preview(
             points, wall_candidates, str(args.output_dir / "wall_candidates.png"),
+            capture_label(args.capture),
+        )
+        render_wall_consensus_preview(
+            points,
+            cross_height_wall_candidates,
+            str(args.output_dir / "cross_height_wall_candidates.png"),
             capture_label(args.capture),
         )
         room_candidates = detect_room_candidates(points)
@@ -72,6 +90,7 @@ def main(argv: list[str] | None = None) -> int:
             capture=capture_label(args.capture), point_count=len(points),
             frame_step=args.frame_step, voxel_size_m=args.voxel_size,
             wall_candidates=wall_candidates,
+            cross_height_wall_candidates=cross_height_wall_candidates,
             room_candidates=room_candidates,
             opening_candidates=opening_candidates,
         )
@@ -84,12 +103,15 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"Status: partial ({len(wall_candidates)} wall, {len(room_candidates)} room, "
-        f"{len(opening_candidates)} opening candidates)"
+        f"{len(opening_candidates)} opening, {len(cross_height_wall_candidates)} "
+        "cross-height wall candidates)"
     )
     print(f"Result: {args.output_dir / 'plan.json'}")
     print(f"Preview: {args.output_dir / 'plan.png'}")
     print(f"Point cloud: {args.output_dir / 'point_cloud.npz'}")
     print(f"Wall candidate preview: {args.output_dir / 'wall_candidates.png'}")
+    print(f"Cross-height wall support: {args.output_dir / 'cross_height_wall_candidates.json'}")
+    print(f"Cross-height wall preview: {args.output_dir / 'cross_height_wall_candidates.png'}")
     print(f"Room candidate preview: {args.output_dir / 'room_candidates.png'}")
     print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
     return 0

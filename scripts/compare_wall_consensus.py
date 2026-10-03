@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import math
 from pathlib import Path
 
 import matplotlib
@@ -15,7 +14,8 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-from room_reconstruction.geometry import detect_wall_candidates, estimate_floor_height
+from room_reconstruction.consensus import detect_wall_candidates_by_height, find_consensus_walls
+from room_reconstruction.geometry import estimate_floor_height
 from room_reconstruction.pointcloud import load_archive_point_cloud
 
 
@@ -27,147 +27,6 @@ HEIGHT_BANDS = (
     ("current", 0.85, 1.55, "#ff7f0e"),
     ("upper", 1.50, 2.20, "#9467bd"),
 )
-
-
-def _line_geometry(wall: dict[str, object]) -> dict[str, object]:
-    start = np.asarray(wall["start_xz_m"], dtype=np.float64)
-    end = np.asarray(wall["end_xz_m"], dtype=np.float64)
-    vector = end - start
-    length = float(np.linalg.norm(vector))
-    direction = vector / length
-    if direction[0] < 0 or (abs(direction[0]) < 1e-8 and direction[1] < 0):
-        direction = -direction
-    normal = np.array([-direction[1], direction[0]])
-    offset = float(np.dot((start + end) / 2, normal))
-    interval = sorted((float(np.dot(start, direction)), float(np.dot(end, direction))))
-    return {
-        "direction": direction,
-        "normal": normal,
-        "offset": offset,
-        "interval": interval,
-        "length": length,
-    }
-
-
-def _shared_overlap(
-    group: dict[str, object],
-    candidate: dict[str, object],
-    *,
-    max_angle_deg: float,
-    max_offset_m: float,
-    min_overlap_m: float,
-) -> tuple[float, list[float]] | None:
-    anchor = group["anchor"]
-    direction = anchor["direction"]
-    normal = anchor["normal"]
-    candidate_direction = candidate["direction"]
-    if abs(float(np.dot(direction, candidate_direction))) < math.cos(math.radians(max_angle_deg)):
-        return None
-
-    candidate_wall = candidate["wall"]
-    start = np.asarray(candidate_wall["start_xz_m"], dtype=np.float64)
-    end = np.asarray(candidate_wall["end_xz_m"], dtype=np.float64)
-    midpoint = (start + end) / 2
-    candidate_offset = float(np.dot(midpoint, normal))
-    if abs(candidate_offset - anchor["offset"]) > max_offset_m:
-        return None
-    candidate_interval = sorted(
-        (float(np.dot(start, direction)), float(np.dot(end, direction)))
-    )
-    shared = [
-        max(group["shared_interval"][0], candidate_interval[0]),
-        min(group["shared_interval"][1], candidate_interval[1]),
-    ]
-    overlap = shared[1] - shared[0]
-    required_overlap = max(
-        min_overlap_m,
-        0.4 * min(anchor["length"], candidate["length"]),
-    )
-    if overlap < required_overlap:
-        return None
-    return overlap, shared
-
-
-def find_consensus_walls(
-    candidates_by_band: dict[str, list[dict[str, object]]],
-    *,
-    max_angle_deg: float = 10.0,
-    max_offset_m: float = 0.20,
-    min_overlap_m: float = 0.75,
-) -> list[dict[str, object]]:
-    """Group overlapping, near-parallel wall candidates from distinct bands."""
-    if (
-        not math.isfinite(max_angle_deg)
-        or not math.isfinite(max_offset_m)
-        or not math.isfinite(min_overlap_m)
-        or not 0 < max_angle_deg < 90
-        or max_offset_m <= 0
-        or min_overlap_m <= 0
-    ):
-        raise ValueError("consensus tolerances must be positive and angle below 90 degrees")
-
-    groups: list[dict[str, object]] = []
-    ordered_bands = [label for label, *_ in HEIGHT_BANDS]
-    for band in ordered_bands:
-        for wall in sorted(
-            candidates_by_band.get(band, []),
-            key=lambda item: int(item.get("supporting_cells", 0)),
-            reverse=True,
-        ):
-            geometry = _line_geometry(wall)
-            item = {"band": band, "wall": wall, **geometry}
-            matches = []
-            for group in groups:
-                if band in group["bands"]:
-                    continue
-                overlap = _shared_overlap(
-                    group, item,
-                    max_angle_deg=max_angle_deg,
-                    max_offset_m=max_offset_m,
-                    min_overlap_m=min_overlap_m,
-                )
-                if overlap is not None:
-                    matches.append((overlap[0], group, overlap[1]))
-            if matches:
-                _, group, shared_interval = max(matches, key=lambda result: result[0])
-                group["members"].append(item)
-                group["bands"].append(band)
-                group["shared_interval"] = shared_interval
-            else:
-                groups.append({
-                    "anchor": geometry,
-                    "members": [item],
-                    "bands": [band],
-                    "shared_interval": list(geometry["interval"]),
-                })
-
-    consensus = []
-    for group in groups:
-        if len(group["bands"]) < 2:
-            continue
-        anchor = group["anchor"]
-        start_t, end_t = group["shared_interval"]
-        offset = float(np.mean([member["offset"] for member in group["members"]]))
-        start = anchor["direction"] * start_t + anchor["normal"] * offset
-        end = anchor["direction"] * end_t + anchor["normal"] * offset
-        consensus.append({
-            "id": f"wall_consensus_{len(consensus) + 1:02d}",
-            "start_xz_m": [round(float(value), 3) for value in start],
-            "end_xz_m": [round(float(value), 3) for value in end],
-            "shared_length_m": round(float(end_t - start_t), 3),
-            "supporting_bands": group["bands"],
-            "support_count": len(group["bands"]),
-            "source_candidates": [
-                {"band": member["band"], "id": member["wall"]["id"]}
-                for member in group["members"]
-            ],
-            "status": "candidate_unverified",
-            "reason": (
-                "Near-parallel wall candidates overlap in multiple height bands; "
-                "agreement is not ground-truth validation."
-            ),
-        })
-    return sorted(consensus, key=lambda item: (-item["support_count"], -item["shared_length_m"]))
 
 
 def compare_consensus(
@@ -184,13 +43,7 @@ def compare_consensus(
     if not np.isfinite(points).all():
         raise ValueError("points must contain only finite coordinates")
     floor_y = estimate_floor_height(points)
-    candidates_by_band = {}
-    for label, lower, upper, _ in HEIGHT_BANDS:
-        candidates_by_band[label] = detect_wall_candidates(
-            points,
-            slice_min_height_m=lower,
-            slice_max_height_m=upper,
-        )
+    candidates_by_band = detect_wall_candidates_by_height(points)
     consensus = find_consensus_walls(
         candidates_by_band,
         max_angle_deg=max_angle_deg,

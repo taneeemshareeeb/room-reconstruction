@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://room-reconstruction.local/schemas/plan-0.1.0.json",
+  "$id": "https://room-reconstruction.local/schemas/plan-0.2.0.json",
   "title": "Room reconstruction result",
   "description": "Versioned result contract. Unavailable measurements are represented explicitly, never guessed.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "room_candidates", "opening_candidates", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
+  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
   "properties": {
-    "schema_version": {"const": "0.1.0"},
+    "schema_version": {"const": "0.2.0"},
     "status": {"enum": ["partial", "complete", "failed"]},
     "created_at": {"type": "string", "format": "date-time"},
     "capture": {
@@ -24,6 +24,7 @@
     },
     "rooms": {"type": "array", "items": {"$ref": "#/$defs/room"}},
     "wall_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_candidate"}},
+    "cross_height_wall_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_consensus_candidate"}},
     "room_candidates": {"type": "array", "items": {"$ref": "#/$defs/room_candidate"}},
     "opening_candidates": {"type": "array", "items": {"$ref": "#/$defs/opening_candidate"}},
     "room_connections": {"type": "array", "items": {"$ref": "#/$defs/room_connection"}},
@@ -51,13 +52,42 @@
     "point2d": {"type": "array", "prefixItems": [{"type": "number"}, {"type": "number"}], "minItems": 2, "maxItems": 2},
     "wall_candidate": {
       "type": "object", "additionalProperties": false,
-      "required": ["id", "start_xz_m", "end_xz_m", "length_m", "supporting_cells", "status", "reason"],
+      "required": ["id", "start_xz_m", "end_xz_m", "length_m", "supporting_cells", "height_band_support_count", "supporting_height_bands", "cross_height_consensus_ids", "support_status", "status", "reason"],
       "properties": {
         "id": {"type": "string"},
         "start_xz_m": {"$ref": "#/$defs/point2d"},
         "end_xz_m": {"$ref": "#/$defs/point2d"},
         "length_m": {"type": "number", "exclusiveMinimum": 0},
         "supporting_cells": {"type": "integer", "minimum": 1},
+        "height_band_support_count": {"type": "integer", "minimum": 1, "maximum": 3},
+        "supporting_height_bands": {"type": "array", "items": {"enum": ["lower", "current", "upper"]}, "minItems": 1, "uniqueItems": true},
+        "cross_height_consensus_ids": {"type": "array", "items": {"type": "string", "pattern": "^wall_consensus_[0-9]{2}$"}, "uniqueItems": true},
+        "support_status": {"const": "unverified_consistency_hint"},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "wall_consensus_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "start_xz_m", "end_xz_m", "shared_length_m", "supporting_bands", "support_count", "source_candidates", "status", "reason"],
+      "properties": {
+        "id": {"type": "string"},
+        "start_xz_m": {"$ref": "#/$defs/point2d"},
+        "end_xz_m": {"$ref": "#/$defs/point2d"},
+        "shared_length_m": {"type": "number", "exclusiveMinimum": 0},
+        "supporting_bands": {"type": "array", "items": {"enum": ["lower", "current", "upper"]}, "minItems": 2, "maxItems": 3, "uniqueItems": true},
+        "support_count": {"type": "integer", "minimum": 2, "maximum": 3},
+        "source_candidates": {
+          "type": "array", "minItems": 2,
+          "items": {
+            "type": "object", "additionalProperties": false,
+            "required": ["band", "id"],
+            "properties": {
+              "band": {"enum": ["lower", "current", "upper"]},
+              "id": {"type": "string"}
+            }
+          }
+        },
         "status": {"const": "candidate_unverified"},
         "reason": {"type": "string"}
       }

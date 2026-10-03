@@ -61,13 +61,66 @@ def render_wall_candidate_preview(
         end = candidate["end_xz_m"]
         axis.plot([start[0], end[0]], [start[1], end[1]], color="#d62728",
                   linewidth=2.0, alpha=0.9)
+        support_count = int(candidate.get("height_band_support_count", 1))
+        if support_count > 1:
+            midpoint = (np.asarray(start) + np.asarray(end)) / 2
+            axis.text(midpoint[0], midpoint[1], f"{support_count}/3",
+                      color="#075b31", fontsize=8, ha="center", va="center",
+                      bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
     axis.set_title(
         f"{title} · height {floor_y + .85:.2f}–{floor_y + 1.55:.2f} m\n"
-        "WALL CANDIDATES — REVIEW REQUIRED"
+        "WALL CANDIDATES — labels show strongest subsection support; review required"
     )
     axis.set_xlabel("World x (m)")
     axis.set_ylabel("World z (m)")
-    axis.set_aspect("equal", adjustable="datalim")
+    axis.set_aspect("equal", adjustable="box")
+    axis.grid(alpha=0.18)
+    figure.savefig(path, dpi=180, bbox_inches="tight")
+    plt.close(figure)
+
+
+def render_wall_consensus_preview(
+    points: np.ndarray,
+    wall_candidates: list[dict[str, object]],
+    path: str,
+    title: str,
+) -> None:
+    """Show shared wall segments supported in multiple height bands."""
+    points = np.asarray(points)
+    figure, axis = plt.subplots(figsize=(10, 8), constrained_layout=True)
+    if len(points) == 0:
+        axis.text(0.5, 0.5, "No valid points", transform=axis.transAxes,
+                  ha="center", va="center")
+        axis.set_title(f"{title}\nCROSS-HEIGHT WALL SUPPORT — NO DATA")
+        figure.savefig(path, dpi=180, bbox_inches="tight")
+        plt.close(figure)
+        return
+
+    floor_y = estimate_floor_height(points)
+    evidence = points[
+        (points[:, 1] >= floor_y + 0.40) & (points[:, 1] <= floor_y + 2.20)
+    ]
+    display = evidence[::max(1, len(evidence) // 150_000)]
+    axis.scatter(display[:, 0], display[:, 2], s=0.25, color="#87909a",
+                 alpha=0.35, linewidths=0, rasterized=True)
+    for candidate in wall_candidates:
+        start = candidate["start_xz_m"]
+        end = candidate["end_xz_m"]
+        axis.plot([start[0], end[0]], [start[1], end[1]], color="#18864b",
+                  linewidth=2.4, solid_capstyle="round")
+        midpoint = (np.asarray(start) + np.asarray(end)) / 2
+        axis.text(
+            midpoint[0], midpoint[1], f"{candidate['support_count']}/3",
+            color="#075b31", fontsize=8, ha="center", va="center",
+            bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"},
+        )
+    axis.set_title(
+        f"{title} · {len(wall_candidates)} shared segments\n"
+        "Cross-height agreement candidates — review required"
+    )
+    axis.set_xlabel("World x (m)")
+    axis.set_ylabel("World z (m)")
+    axis.set_aspect("equal", adjustable="box")
     axis.grid(alpha=0.18)
     figure.savefig(path, dpi=180, bbox_inches="tight")
     plt.close(figure)

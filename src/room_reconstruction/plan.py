@@ -7,12 +7,13 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "0.1.0"
+SCHEMA_VERSION = "0.2.0"
 
 
 def build_plan_document(
     *, capture: str, point_count: int, frame_step: int, voxel_size_m: float,
     wall_candidates: list[dict[str, object]] | None = None,
+    cross_height_wall_candidates: list[dict[str, object]] | None = None,
     room_candidates: list[dict[str, object]] | None = None,
     opening_candidates: list[dict[str, object]] | None = None,
 ) -> dict[str, Any]:
@@ -29,6 +30,7 @@ def build_plan_document(
         },
         "rooms": [],
         "wall_candidates": wall_candidates or [],
+        "cross_height_wall_candidates": cross_height_wall_candidates or [],
         "room_candidates": room_candidates or [],
         "opening_candidates": opening_candidates or [],
         "room_connections": [
@@ -40,6 +42,7 @@ def build_plan_document(
             "point_cloud": "available",
             "room_segmentation": "candidate_available",
             "walls": "candidate_available",
+            "cross_height_wall_support": "candidate_available",
             "floor_area": "not_implemented",
             "ceiling": "not_implemented",
             "openings": "not_implemented",
@@ -54,12 +57,15 @@ def build_plan_document(
             "point_cloud": "point_cloud.npz",
             "preview": "plan.png",
             "wall_candidates_preview": "wall_candidates.png",
+            "cross_height_wall_candidates": "cross_height_wall_candidates.json",
+            "cross_height_wall_candidates_preview": "cross_height_wall_candidates.png",
             "room_candidates_preview": "room_candidates.png",
             "opening_candidates": "opening_candidates.json",
         },
         "limitations": [
             "The preview shows a projected point cloud; it is not a floor plan.",
             "Wall traces are geometric candidates and require visual confirmation.",
+            "Wall support counts show the strongest overlapping subsection across height bands, not an accuracy score.",
             "Room boundaries, dimensions, openings, damage, and scope items have not been inferred.",
         ],
     }
