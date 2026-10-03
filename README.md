@@ -189,9 +189,10 @@ page shows them in a separate Door / gaps tab.
 dimensions, and floor areas still need validation.
 Current floor-only and floor-and-ceiling candidate outputs are compared in
 [`reports/scan_candidate_comparison.md`](reports/scan_candidate_comparison.md).
-The measured room sketch and current scan comparison are summarized in
-[`reports/ground_truth_comparison.md`](reports/ground_truth_comparison.md);
-the two room-length measurements remain marked for rechecking.
+The schematic room reference and current scan comparison are summarized in
+[`reports/ground_truth_comparison.md`](reports/ground_truth_comparison.md).
+The left and right wall lengths were remeasured as distinct sides; the room
+outline and corner geometry still need to be recorded before comparing area.
 
 To review the existing ceiling-inclusive reports locally in a browser, run:
 

@@ -7,11 +7,11 @@
     "width_bottom": 3.32,
     "left_length": {
       "value": 3.63,
-      "status": "needs_remeasurement"
+      "status": "remeasured"
     },
     "right_length": {
       "value": 4.15,
-      "status": "needs_remeasurement"
+      "status": "remeasured"
     },
     "ceiling_height": 2.63,
     "doorway": {
@@ -20,8 +20,9 @@
     }
   },
   "notes": [
-    "The sketch identifies both room lengths as measurements to check.",
+    "The left and right wall lengths were remeasured and match the reported values; retain them as separate sides.",
+    "The sketch is a schematic location reference; do not force the room outline to be rectangular or parallel-sided.",
     "The two width measurements differ by 0.04 m.",
-    "The two length measurements differ by 0.52 m; do not treat either as confirmed."
+    "The two remeasured side lengths differ by 0.52 m; this is part of the current room-shape reference."
   ]
 }
