@@ -117,6 +117,17 @@ This compares lower, current, upper, and combined height bands in
 for choosing where to look for geometry; candidate changes do not establish
 which band is more accurate.
 
+To highlight wall segments that line up across multiple height bands, run:
+
+```sh
+PYTHONPATH=src python scripts/compare_wall_consensus.py
+```
+
+The unverified agreements are saved to
+`reports/single_scan_with_ceiling_wall_consensus.json` and previewed in the
+matching PNG. This uses geometric tolerances for angle, offset, and overlap;
+agreement only shows repeatability across slices.
+
 ## Running the reconstruction app
 
 The first runnable milestone accepts one LiDAR capture directory or ZIP. It
