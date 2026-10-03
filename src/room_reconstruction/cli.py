@@ -18,8 +18,9 @@ from .consensus import (
     propose_wall_supported_rooms,
 )
 from .openings import infer_opening_candidates, infer_wall_gap_candidates
+from .passes import NoPassSplitError, detect_camera_pass_split
 from .plan import build_plan_document, capture_label
-from .pointcloud import load_archive_point_cloud, load_capture_point_cloud
+from .pointcloud import load_archive_point_cloud, load_capture_point_cloud, voxel_downsample
 from .render import (
     render_point_cloud_preview,
     render_room_candidate_preview,
@@ -27,6 +28,7 @@ from .render import (
     render_wall_candidate_preview,
 )
 from .rooms import detect_room_candidates
+from .surfaces import detect_vertical_surface_candidates
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -43,9 +45,52 @@ def main(argv: list[str] | None = None) -> int:
     if args.tier != "lidar":
         parser.error(f"the {args.tier} tier is not implemented yet; currently supported: lidar")
     try:
-        loader = load_archive_point_cloud if args.capture.suffix.lower() == ".zip" else load_capture_point_cloud
-        points = loader(args.capture, frame_step=args.frame_step, voxel_size=args.voxel_size)
+        loader = (
+            load_archive_point_cloud
+            if args.capture.suffix.lower() == ".zip"
+            else load_capture_point_cloud
+        )
+        pass_split = None
+        floor_pass_points = None
+        ceiling_pass_points = None
+        try:
+            pass_split = detect_camera_pass_split(args.capture)
+        except NoPassSplitError:
+            pass
+        if pass_split is not None:
+            split_row = int(pass_split["split_row_index"])
+            frame_count = int(pass_split["frame_count"])
+            pass_b_start = split_row + (-split_row % args.frame_step)
+            floor_pass_points = loader(
+                args.capture,
+                frame_step=args.frame_step,
+                frame_range=(0, split_row),
+                voxel_size=args.voxel_size,
+            )
+            ceiling_pass_points = loader(
+                args.capture,
+                frame_step=args.frame_step,
+                frame_range=(pass_b_start, frame_count),
+                voxel_size=args.voxel_size,
+            )
+            points = voxel_downsample(
+                np.concatenate((floor_pass_points, ceiling_pass_points), axis=0),
+                voxel_size=args.voxel_size,
+            )
+        else:
+            floor_pass_points = loader(
+                args.capture, frame_step=args.frame_step, voxel_size=args.voxel_size
+            )
+            points = floor_pass_points
+        surface_candidates = detect_vertical_surface_candidates(
+            floor_pass_points,
+            ceiling_pass_points,
+            floor_reference_pass="A" if pass_split is not None else "unsegmented",
+        )
         args.output_dir.mkdir(parents=True, exist_ok=True)
+        (args.output_dir / "vertical_surface_candidates.json").write_text(
+            json.dumps(surface_candidates, indent=2) + "\n", encoding="utf-8"
+        )
         np.savez_compressed(
             args.output_dir / "point_cloud.npz",
             points=points,
@@ -110,6 +155,8 @@ def main(argv: list[str] | None = None) -> int:
             opening_candidates=opening_candidates,
             wall_gap_candidates=wall_gap_candidates,
             wall_room_candidates=wall_room_candidates,
+            pass_split=pass_split,
+            surface_candidates=surface_candidates,
         )
         (args.output_dir / "plan.json").write_text(
             json.dumps(document, indent=2) + "\n", encoding="utf-8"
@@ -135,4 +182,14 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
     print(f"Wall-gap candidates: {args.output_dir / 'wall_gap_candidates.json'}")
     print(f"Wall-supported room outlines: {args.output_dir / 'wall_room_candidates.json'}")
+    print(f"Vertical surface candidates: {args.output_dir / 'vertical_surface_candidates.json'}")
+    if pass_split is not None:
+        print(
+            f"Pass split: row {pass_split['split_row_index']} of "
+            f"{pass_split['frame_count']} at {pass_split['elapsed_time_s']:.2f} s"
+        )
+    print(
+        f"Height candidates: 1 floor, "
+        f"{len(surface_candidates['ceiling_height_candidates'])} upper-surface"
+    )
     return 0

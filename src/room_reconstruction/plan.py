@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 
-SCHEMA_VERSION = "0.4.0"
+SCHEMA_VERSION = "0.5.0"
 
 
 def build_plan_document(
@@ -18,8 +18,15 @@ def build_plan_document(
     opening_candidates: list[dict[str, object]] | None = None,
     wall_gap_candidates: list[dict[str, object]] | None = None,
     wall_room_candidates: list[dict[str, object]] | None = None,
+    pass_split: dict[str, object] | None = None,
+    surface_candidates: dict[str, object] | None = None,
 ) -> dict[str, Any]:
     """Describe what the current LiDAR milestone measured and what it did not."""
+    surface_candidates = surface_candidates or {
+        "floor_height_candidate": None,
+        "ceiling_height_candidates": [],
+        "ceiling_candidate_status": "insufficient_data",
+    }
     return {
         "schema_version": SCHEMA_VERSION,
         "status": "partial",
@@ -29,6 +36,7 @@ def build_plan_document(
             "frame_step": frame_step,
             "voxel_size_m": voxel_size_m,
             "point_count": point_count,
+            "pass_split": pass_split,
         },
         "rooms": [],
         "wall_candidates": wall_candidates or [],
@@ -37,6 +45,8 @@ def build_plan_document(
         "opening_candidates": opening_candidates or [],
         "wall_gap_candidates": wall_gap_candidates or [],
         "wall_room_candidates": wall_room_candidates or [],
+        "floor_height_candidate": surface_candidates["floor_height_candidate"],
+        "ceiling_height_candidates": surface_candidates["ceiling_height_candidates"],
         "room_connections": [
             {"room_ids": candidate["room_ids"], "opening_candidate_id": candidate["id"]}
             for candidate in opening_candidates or []
@@ -50,7 +60,11 @@ def build_plan_document(
             "wall_gaps": "candidate_available",
             "wall_supported_room_outlines": "candidate_available",
             "floor_area": "not_implemented",
-            "ceiling": "not_implemented",
+            "floor_elevation": (
+                "candidate_available" if surface_candidates["floor_height_candidate"]
+                else "insufficient_data"
+            ),
+            "ceiling": surface_candidates["ceiling_candidate_status"],
             "openings": "not_implemented",
             "room_adjacency": "not_implemented",
             "damage": "not_implemented",
@@ -69,6 +83,7 @@ def build_plan_document(
             "opening_candidates": "opening_candidates.json",
             "wall_gap_candidates": "wall_gap_candidates.json",
             "wall_room_candidates": "wall_room_candidates.json",
+            "vertical_surface_candidates": "vertical_surface_candidates.json",
         },
         "limitations": [
             "The preview shows a projected point cloud; it is not a floor plan.",
@@ -76,6 +91,7 @@ def build_plan_document(
             "Wall support counts show the strongest overlapping subsection across height bands, not an accuracy score.",
             "Wall gaps are geometric interruptions and are not confirmed doorways.",
             "Wall-supported room outlines require visual and measured review; partial side coverage does not prove a complete wall.",
+            "Floor elevation is a pass-level candidate; ceiling-height peaks are not assigned to rooms or confirmed as ceilings.",
             "Verified room boundaries, dimensions, openings, damage, and scope items are not available.",
         ],
     }

@@ -159,6 +159,14 @@ The output directory contains `point_cloud.npz`, `plan.png`, and `plan.json`.
 Photo and video capture tiers are not wired up yet; the command reports that
 clearly instead of returning fabricated geometry.
 
+When pose metadata shows the downward-looking and upward-looking passes, the
+runner detects their split, analyzes the floor pass separately, and looks for
+strong height peaks in the upward pass. The estimates are written to
+`vertical_surface_candidates.json` and included in `plan.json`; peaks may be
+ceilings, beams, or headers, and are not assigned to rooms. A one-pass capture
+still produces a floor candidate and combined point cloud, with ceiling height
+reported as insufficient data.
+
 The command also records and renders tentative wall traces in
 `wall_candidates.json` and `wall_candidates.png`. It estimates floor height,
 uses a horizontal slice about 0.85–1.55 m above that estimate, and fits line
