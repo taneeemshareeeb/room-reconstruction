@@ -131,6 +131,7 @@ def render_room_candidate_preview(
     opening_candidates: list[dict[str, object]] | None = None,
     wall_gap_candidates: list[dict[str, object]] | None = None,
     wall_room_candidates: list[dict[str, object]] | None = None,
+    partial_wall_room_candidates: list[dict[str, object]] | None = None,
 ) -> None:
     """Show room outlines, room openings, and unverified wall gaps."""
     points = np.asarray(points)
@@ -183,6 +184,19 @@ def render_room_candidate_preview(
         axis.text(center[0], center[1], candidate["id"], color="#145b3e",
                   fontsize=8, ha="center", va="center",
                   bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
+    for candidate in partial_wall_room_candidates or []:
+        boundary = candidate["boundary_xz_m"]
+        axis.add_patch(Polygon(
+            boundary, closed=True, fill=False, edgecolor="#b14d00",
+            linewidth=2.0, linestyle=":",
+        ))
+        center = np.mean(np.asarray(boundary, dtype=np.float64), axis=0)
+        axis.text(
+            center[0], center[1],
+            f"{candidate['id']} · {candidate['minimum_side_support_fraction']:.0%} min support",
+            color="#8c3d00", fontsize=8, ha="center", va="center",
+            bbox={"facecolor": "white", "alpha": 0.85, "edgecolor": "none"},
+        )
     if not wall_room_candidates:
         axis.text(
             0.02, 0.98,
@@ -209,7 +223,7 @@ def render_room_candidate_preview(
         axis.text(center[0], center[1], f"{gap['observed_gap_m']:.2f} m",
                   color="#07556b", fontsize=8, ha="center", va="top",
                   bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
-    axis.set_title(f"{title}\nROOM OUTLINES, OPENINGS AND WALL GAPS — REVIEW REQUIRED")
+    axis.set_title(f"{title}\nGREEN: ≥70% wall support · DOTTED: partial outline hypotheses")
     axis.set_xlabel("World x (m)")
     axis.set_ylabel("World z (m)")
     axis.set_aspect("equal", adjustable="datalim")

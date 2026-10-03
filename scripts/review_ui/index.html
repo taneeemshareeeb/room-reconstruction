@@ -79,6 +79,7 @@
       {key:"metrics", label:"Room metrics", image:"room_candidates.png", note:"Rough spans and pass-specific surface samples inside each raster room region. Values are candidates, not verified room measurements."},
       {key:"checks", label:"Measured checks", image:"room_candidates.png", note:"Numerical matches against the hand measurements. The scan and sketch are not spatially registered, so a close match does not confirm identity."},
       {key:"wall_rooms", label:"Wall outlines", image:"room_candidates.png", note:"Solid green outlines join four cross-height wall segments when each side has at least 70% direct scan support. These remain unverified hypotheses."},
+      {key:"partial_wall_rooms", label:"Partial outlines", image:"room_candidates.png", note:"Dotted amber outlines are extrapolated hypotheses with at least 30% direct support on each side. Unsupported boundary sections are not observed walls."},
       {key:"walls", label:"Walls", image:"wall_candidates.png", note:"Wall traces are candidates; support counts indicate cross-height consistency, not accuracy."},
       {key:"gaps", label:"Door / gaps", image:"room_candidates.png", note:"Aligned wall interruptions are possible openings or missing scan evidence; they are not classified as doors."},
       {key:"consensus", label:"Shared traces", image:"cross_height_wall_candidates.png", note:"Segments that line up across height bands. Agreement is not ground truth."},
@@ -112,6 +113,7 @@
         return records;
       }
       if (key === "wall_rooms") return data.files.wall_rooms || [];
+      if (key === "partial_wall_rooms") return data.files.partial_wall_rooms || [];
       if (key === "walls") return data.files.walls || [];
       if (key === "gaps") return data.files.wall_gaps || [];
       if (key === "consensus") return ((data.files.consensus || {}).cross_band_consensus_candidates || []);
@@ -178,12 +180,13 @@
       }
       if (key === "wall_rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² · sides ${item.side_lengths_m?.map(v=>Number(v).toFixed(2)).join(" × ")} m · corners ${item.corner_angles_deg?.map(v=>Number(v).toFixed(0)).join("°, ")}° · min wall support ${(100*Number(item.minimum_side_support_fraction || 0)).toFixed(0)}%`;
       if (key === "walls") return `${Number(item.length_m || 0).toFixed(2)} m · ${item.height_band_support_count ?? 1}/3 height bands · ${item.supporting_cells ?? 0} supporting cells`;
+      if (key === "partial_wall_rooms") return `side lengths ${item.side_lengths_m?.map(v=>Number(v).toFixed(2)).join(" × ")} m · direct scan support ${(item.side_support_fraction || []).map(v=>Math.round(100*Number(v))+"%").join(" / ")} · unsupported edge sections are extrapolated`;
       if (key === "gaps") return `${Number(item.observed_gap_m || 0).toFixed(2)} m gap · ${item.height_band_support_count ?? 1}/3 height bands · ${(item.supporting_height_bands || []).join(", ") || "band support unavailable"}`;
       return `${Number(item.shared_length_m || 0).toFixed(2)} m shared · ${item.support_count || 0}/3 height bands (${(item.supporting_bands || []).join(", ")})`;
     }
     function renderCandidates() {
       const list=itemsFor(active), listEl=document.querySelector("#candidate-list"), currentMarks=marks();
-      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces",overlap:"Adjacent image overlap"}[active]);
+      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",partial_wall_rooms:"Partial outline hypotheses",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces",overlap:"Adjacent image overlap"}[active]);
       document.querySelector("#list-count").textContent = active === "overview" ? "" : `${list.length} total`;
       if (active === "overview") { listEl.innerHTML='<div class="empty">Choose a preview tab to inspect candidate details. Use the buttons on each candidate to record your visual review, then export the marks as JSON.</div>'; return; }
       if (!list.length) { listEl.innerHTML='<div class="empty">No candidates in this result.</div>'; return; }

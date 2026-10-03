@@ -22,6 +22,7 @@ JSON_FILES = {
     "openings": "opening_candidates.json",
     "wall_gaps": "wall_gap_candidates.json",
     "wall_rooms": "wall_room_candidates.json",
+    "partial_wall_rooms": "partial_wall_room_candidates.json",
     "consensus": "cross_height_wall_candidates.json",
     "image_analysis": "image_analysis.json",
 }
@@ -50,6 +51,7 @@ def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[st
             "openings": results_dir / f"{report_prefix}_opening_candidates.json",
             "consensus": results_dir / f"{report_prefix}_wall_consensus.json",
             "wall_rooms": None,
+            "partial_wall_rooms": None,
         }
         image_paths = {
             "plan.png": results_dir / f"{report_prefix}_step10_voxel2cm.png",
@@ -60,7 +62,7 @@ def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[st
 
     for key, path in json_paths.items():
         if path is None:
-            if key == "wall_rooms":
+            if key in {"wall_rooms", "partial_wall_rooms"}:
                 files[key] = []
                 continue
             files[key] = {
@@ -72,7 +74,7 @@ def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[st
             files[key] = None
             plan = files.get("plan")
             visual_tier = isinstance(plan, dict) and (plan.get("capture") or {}).get("tier") in {"photos", "video"}
-            if key == "image_analysis" or (visual_tier and key in {"rooms", "walls", "openings", "wall_gaps", "wall_rooms", "consensus"}):
+            if key == "image_analysis" or (visual_tier and key in {"rooms", "walls", "openings", "wall_gaps", "wall_rooms", "partial_wall_rooms", "consensus"}):
                 files[key] = [] if key != "image_analysis" else None
             else:
                 errors.append(f"Missing {path.name}")

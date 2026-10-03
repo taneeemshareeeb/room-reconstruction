@@ -5,7 +5,7 @@
   "description": "Versioned result contract. Unavailable measurements are represented explicitly, never guessed.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "wall_gap_candidates", "wall_room_candidates", "floor_height_candidate", "ceiling_height_candidates", "ground_truth_comparison", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
+  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "wall_gap_candidates", "wall_room_candidates", "partial_wall_room_candidates", "floor_height_candidate", "ceiling_height_candidates", "ground_truth_comparison", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
   "properties": {
     "schema_version": {"const": "0.6.0"},
     "status": {"enum": ["partial", "complete", "failed"]},
@@ -30,6 +30,7 @@
     "opening_candidates": {"type": "array", "items": {"$ref": "#/$defs/opening_candidate"}},
     "wall_gap_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_gap_candidate"}},
     "wall_room_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_room_candidate"}},
+    "partial_wall_room_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_room_candidate"}},
     "floor_height_candidate": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/floor_height_candidate"}]},
     "ceiling_height_candidates": {"type": "array", "items": {"$ref": "#/$defs/ceiling_height_candidate"}},
     "ground_truth_comparison": {"oneOf": [{"type": "null"}, {"$ref": "#/$defs/ground_truth_comparison"}]},

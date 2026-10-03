@@ -18,6 +18,7 @@ def build_plan_document(
     opening_candidates: list[dict[str, object]] | None = None,
     wall_gap_candidates: list[dict[str, object]] | None = None,
     wall_room_candidates: list[dict[str, object]] | None = None,
+    partial_wall_room_candidates: list[dict[str, object]] | None = None,
     pass_split: dict[str, object] | None = None,
     surface_candidates: dict[str, object] | None = None,
     ground_truth_comparison: dict[str, object] | None = None,
@@ -46,6 +47,7 @@ def build_plan_document(
         "opening_candidates": opening_candidates or [],
         "wall_gap_candidates": wall_gap_candidates or [],
         "wall_room_candidates": wall_room_candidates or [],
+        "partial_wall_room_candidates": partial_wall_room_candidates or [],
         "floor_height_candidate": surface_candidates["floor_height_candidate"],
         "ceiling_height_candidates": surface_candidates["ceiling_height_candidates"],
         "ground_truth_comparison": ground_truth_comparison,
@@ -61,6 +63,7 @@ def build_plan_document(
             "cross_height_wall_support": "candidate_available",
             "wall_gaps": "candidate_available",
             "wall_supported_room_outlines": "candidate_available",
+            "partial_wall_outlines": "candidate_available",
             "floor_area": "not_implemented",
             "room_surface_measurements": "candidate_available",
             "floor_elevation": (
@@ -87,6 +90,7 @@ def build_plan_document(
             "opening_candidates": "opening_candidates.json",
             "wall_gap_candidates": "wall_gap_candidates.json",
             "wall_room_candidates": "wall_room_candidates.json",
+            "partial_wall_room_candidates": "partial_wall_room_candidates.json",
             "vertical_surface_candidates": "vertical_surface_candidates.json",
             **(
                 {"ground_truth_comparison": "ground_truth_comparison.json"}

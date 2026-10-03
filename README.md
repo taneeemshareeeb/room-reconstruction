@@ -228,6 +228,10 @@ are near right angles and at least 70% of every side is directly supported by
 the scan. Each outline records its source segments and side support fractions.
 An empty list means the scan did not support a closed outline at that
 threshold; it does not mean the physical room is absent.
+Lower-support four-sided hypotheses are kept separate in
+`partial_wall_room_candidates.json`. Every side has at least 30% direct support;
+the remaining boundary is extrapolated and is shown dotted amber in the review
+image. These sketches are explicitly incomplete and are not measured walls.
 Possible openings between aligned wall candidates are written to
 `opening_candidates.json`; each proposed room connection requires room
 candidates on opposite sides of that gap. Short aligned interruptions are also

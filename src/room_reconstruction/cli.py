@@ -134,6 +134,18 @@ def main(argv: list[str] | None = None) -> int:
         candidates_by_band = detect_wall_candidates_by_height(points)
         cross_height_wall_candidates = find_consensus_walls(candidates_by_band)
         wall_room_candidates = propose_wall_supported_rooms(cross_height_wall_candidates)
+        partial_wall_room_candidates = [
+            candidate for candidate in propose_wall_supported_rooms(
+                cross_height_wall_candidates, min_side_coverage=0.30
+            )
+            if float(candidate["minimum_side_support_fraction"]) < 0.70
+        ]
+        for index, candidate in enumerate(partial_wall_room_candidates, start=1):
+            candidate["id"] = f"partial_wall_room_candidate_{index:02d}"
+            candidate["reason"] = (
+                "Partial outline hypothesis: every side has at least 30% direct scan support, "
+                "but unsupported portions are extrapolated and may not match the room boundary."
+            )
         wall_candidates = annotate_current_wall_support(
             candidates_by_band["current"], cross_height_wall_candidates
         )
@@ -190,11 +202,15 @@ def main(argv: list[str] | None = None) -> int:
         (args.output_dir / "wall_room_candidates.json").write_text(
             json.dumps(wall_room_candidates, indent=2) + "\n", encoding="utf-8"
         )
+        (args.output_dir / "partial_wall_room_candidates.json").write_text(
+            json.dumps(partial_wall_room_candidates, indent=2) + "\n", encoding="utf-8"
+        )
         render_room_candidate_preview(
             points, room_candidates, str(args.output_dir / "room_candidates.png"),
             capture_label(args.capture), opening_candidates=opening_candidates,
             wall_gap_candidates=wall_gap_candidates,
             wall_room_candidates=wall_room_candidates,
+            partial_wall_room_candidates=partial_wall_room_candidates,
         )
         document = build_plan_document(
             capture=capture_label(args.capture), point_count=len(points),
@@ -205,6 +221,7 @@ def main(argv: list[str] | None = None) -> int:
             opening_candidates=opening_candidates,
             wall_gap_candidates=wall_gap_candidates,
             wall_room_candidates=wall_room_candidates,
+            partial_wall_room_candidates=partial_wall_room_candidates,
             pass_split=pass_split,
             surface_candidates=surface_candidates,
             ground_truth_comparison=ground_truth_comparison,
@@ -219,6 +236,7 @@ def main(argv: list[str] | None = None) -> int:
     print(
         f"Status: partial ({len(wall_candidates)} wall, {len(room_candidates)} raster room, "
         f"{len(wall_room_candidates)} wall-supported outline, "
+        f"{len(partial_wall_room_candidates)} partial outline hypotheses, "
         f"{len(opening_candidates)} room-opening, {len(wall_gap_candidates)} wall-gap, "
         f"{len(cross_height_wall_candidates)} "
         "cross-height wall candidates)"
@@ -233,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
     print(f"Wall-gap candidates: {args.output_dir / 'wall_gap_candidates.json'}")
     print(f"Wall-supported room outlines: {args.output_dir / 'wall_room_candidates.json'}")
+    print(f"Partial wall-outline hypotheses: {args.output_dir / 'partial_wall_room_candidates.json'}")
     print(f"Vertical surface candidates: {args.output_dir / 'vertical_surface_candidates.json'}")
     if args.ground_truth is not None:
         print(f"Ground-truth comparison: {args.output_dir / 'ground_truth_comparison.json'}")
