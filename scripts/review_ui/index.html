@@ -59,20 +59,21 @@
   <script>
     const views = [
       {key:"overview", label:"Point cloud", image:"plan.png", note:"Projected point cloud preview. This is not a floor plan."},
-      {key:"rooms", label:"Rooms", image:"room_candidates.png", note:"Dashed outlines are room candidates that need review."},
+      {key:"rooms", label:"Raster rooms", image:"room_candidates.png", note:"Dashed orange outlines are enclosed-region candidates; solid green outlines are supported wall loops. Both need review."},
+      {key:"wall_rooms", label:"Wall outlines", image:"room_candidates.png", note:"Solid green outlines join four cross-height wall segments when each side has at least 70% direct scan support. These remain unverified hypotheses."},
       {key:"walls", label:"Walls", image:"wall_candidates.png", note:"Wall traces are candidates; support counts indicate cross-height consistency, not accuracy."},
       {key:"gaps", label:"Door / gaps", image:"room_candidates.png", note:"Aligned wall interruptions are possible openings or missing scan evidence; they are not classified as doors."},
       {key:"consensus", label:"Shared traces", image:"cross_height_wall_candidates.png", note:"Segments that line up across height bands. Agreement is not ground truth."}
     ];
     let data = null, active = "overview";
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
-    const itemsFor = key => key === "rooms" ? (data.files.rooms || []) : key === "walls" ? (data.files.walls || []) : key === "gaps" ? (data.files.wall_gaps || []) : key === "consensus" ? ((data.files.consensus || {}).cross_band_consensus_candidates || []) : [];
+    const itemsFor = key => key === "rooms" ? (data.files.rooms || []) : key === "wall_rooms" ? (data.files.wall_rooms || []) : key === "walls" ? (data.files.walls || []) : key === "gaps" ? (data.files.wall_gaps || []) : key === "consensus" ? ((data.files.consensus || {}).cross_band_consensus_candidates || []) : [];
     const storageKey = () => "room-scan-review:" + ((data.files.plan || {}).capture || {}).id;
     const marks = () => { try { return JSON.parse(localStorage.getItem(storageKey()) || "{}"); } catch { return {}; } };
     function renderStats() {
       const plan = data.files.plan || {}, processing = plan.processing || {};
       const pointCount = processing.point_count == null ? "—" : Number(processing.point_count).toLocaleString();
-      const entries = [["Points", pointCount], ["Room candidates", (data.files.rooms || []).length], ["Wall candidates", (data.files.walls || []).length], ["Wall gaps", (data.files.wall_gaps || []).length], ["Shared wall traces", ((data.files.consensus || {}).cross_band_consensus_candidates || []).length]];
+      const entries = [["Points", pointCount], ["Raster rooms", (data.files.rooms || []).length], ["Wall outlines", (data.files.wall_rooms || []).length], ["Wall candidates", (data.files.walls || []).length], ["Wall gaps", (data.files.wall_gaps || []).length], ["Shared wall traces", ((data.files.consensus || {}).cross_band_consensus_candidates || []).length]];
       document.querySelector("#stats").innerHTML = entries.map(([label,value]) => `<div class="stat"><strong>${esc(value)}</strong><span>${label}</span></div>`).join("");
       document.querySelector("#capture-label").textContent = `${((plan.capture || {}).id) || "Scan results"} · every ${processing.frame_step || "?"} frame · ${processing.voxel_size_m ?? "?"} m voxels`;
     }
@@ -88,13 +89,14 @@
     }
     function describe(item, key) {
       if (key === "rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² estimated · center ${item.center_xz_m?.map(v=>Number(v).toFixed(2)).join(", ")} m`;
+      if (key === "wall_rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² · sides ${item.side_lengths_m?.map(v=>Number(v).toFixed(2)).join(" × ")} m · corners ${item.corner_angles_deg?.map(v=>Number(v).toFixed(0)).join("°, ")}° · min wall support ${(100*Number(item.minimum_side_support_fraction || 0)).toFixed(0)}%`;
       if (key === "walls") return `${Number(item.length_m || 0).toFixed(2)} m · ${item.height_band_support_count ?? 1}/3 height bands · ${item.supporting_cells ?? 0} supporting cells`;
       if (key === "gaps") return `${Number(item.observed_gap_m || 0).toFixed(2)} m gap · ${item.height_band_support_count ?? 1}/3 height bands · ${(item.supporting_height_bands || []).join(", ") || "band support unavailable"}`;
       return `${Number(item.shared_length_m || 0).toFixed(2)} m shared · ${item.support_count || 0}/3 height bands (${(item.supporting_bands || []).join(", ")})`;
     }
     function renderCandidates() {
       const list=itemsFor(active), listEl=document.querySelector("#candidate-list"), currentMarks=marks();
-      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Room candidates",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces"}[active]);
+      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Raster room candidates",wall_rooms:"Wall supported outlines",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces"}[active]);
       document.querySelector("#list-count").textContent = active === "overview" ? "" : `${list.length} total`;
       if (active === "overview") { listEl.innerHTML='<div class="empty">Choose a preview tab to inspect candidate details. Use the buttons on each candidate to record your visual review, then export the marks as JSON.</div>'; return; }
       if (!list.length) { listEl.innerHTML='<div class="empty">No candidates in this result.</div>'; return; }

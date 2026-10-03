@@ -18,6 +18,7 @@ JSON_FILES = {
     "walls": "wall_candidates.json",
     "openings": "opening_candidates.json",
     "wall_gaps": "wall_gap_candidates.json",
+    "wall_rooms": "wall_room_candidates.json",
     "consensus": "cross_height_wall_candidates.json",
 }
 IMAGE_FILES = {
@@ -44,6 +45,7 @@ def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[st
             "walls": results_dir / f"{report_prefix}_wall_candidates.json",
             "openings": results_dir / f"{report_prefix}_opening_candidates.json",
             "consensus": results_dir / f"{report_prefix}_wall_consensus.json",
+            "wall_rooms": None,
         }
         image_paths = {
             "plan.png": results_dir / f"{report_prefix}_step10_voxel2cm.png",
@@ -54,6 +56,9 @@ def load_results(results_dir: Path, report_prefix: str | None = None) -> dict[st
 
     for key, path in json_paths.items():
         if path is None:
+            if key == "wall_rooms":
+                files[key] = []
+                continue
             files[key] = {
                 "capture": {"id": report_prefix},
                 "processing": {"frame_step": 10, "voxel_size_m": 0.02, "point_count": None},

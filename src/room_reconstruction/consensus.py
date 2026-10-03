@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 
 import numpy as np
@@ -192,3 +193,169 @@ def annotate_current_wall_support(
             "support_status": "unverified_consistency_hint",
         })
     return annotated
+
+
+def propose_wall_supported_rooms(
+    consensus_walls: list[dict[str, object]],
+    *,
+    parallel_tolerance_deg: float = 12.0,
+    perpendicular_tolerance_deg: float = 15.0,
+    max_corner_deviation_deg: float = 15.0,
+    min_side_m: float = 1.5,
+    max_side_m: float = 7.0,
+    min_pair_overlap_m: float = 0.5,
+    min_side_coverage: float = 0.70,
+) -> list[dict[str, object]]:
+    """Propose four-sided outlines from supported, approximately rectangular walls.
+
+    These are geometry hypotheses only. Every side must have measurable support
+    from a cross-height consensus segment; unsupported portions are reported as
+    coverage gaps rather than silently treated as observed wall.
+    """
+    if (
+        not 0 < parallel_tolerance_deg < 45
+        or not 0 < perpendicular_tolerance_deg < 45
+        or not 0 < max_corner_deviation_deg < 45
+        or min_side_m <= 0
+        or max_side_m <= min_side_m
+        or min_pair_overlap_m <= 0
+        or not 0 < min_side_coverage <= 1
+    ):
+        raise ValueError("room-outline tolerances and dimensions are invalid")
+
+    lines = []
+    for wall in consensus_walls:
+        start = np.asarray(wall["start_xz_m"], dtype=np.float64)
+        end = np.asarray(wall["end_xz_m"], dtype=np.float64)
+        vector = end - start
+        length = float(np.linalg.norm(vector))
+        if length <= 0:
+            continue
+        direction = vector / length
+        if direction[0] < 0 or (abs(direction[0]) < 1e-8 and direction[1] < 0):
+            direction = -direction
+        normal = np.array([-direction[1], direction[0]])
+        lines.append({
+            "wall": wall,
+            "start": start,
+            "end": end,
+            "direction": direction,
+            "normal": normal,
+            "offset": float(np.dot((start + end) / 2, normal)),
+            "interval": sorted((float(np.dot(start, direction)), float(np.dot(end, direction)))),
+        })
+
+    parallel_cosine = math.cos(math.radians(parallel_tolerance_deg))
+    side_pairs = []
+    for first, second in itertools.combinations(lines, 2):
+        dot = float(np.dot(first["direction"], second["direction"]))
+        if abs(dot) < parallel_cosine:
+            continue
+        normal = np.array([-first["direction"][1], first["direction"][0]])
+        separation = abs(float(np.dot(second["start"] - first["start"], normal)))
+        if not min_side_m <= separation <= max_side_m:
+            continue
+        first_interval = sorted((float(np.dot(first["start"], first["direction"])),
+                                 float(np.dot(first["end"], first["direction"]))))
+        second_interval = sorted((float(np.dot(second["start"], first["direction"])),
+                                  float(np.dot(second["end"], first["direction"]))))
+        overlap = min(first_interval[1], second_interval[1]) - max(first_interval[0], second_interval[0])
+        if overlap < min_pair_overlap_m:
+            continue
+        side_pairs.append((first, second))
+
+    def intersection(first: dict[str, object], second: dict[str, object]) -> np.ndarray | None:
+        matrix = np.asarray([first["normal"], second["normal"]], dtype=np.float64)
+        if abs(float(np.linalg.det(matrix))) < 1e-6:
+            return None
+        return np.linalg.solve(matrix, np.asarray([first["offset"], second["offset"]]))
+
+    proposals = []
+    seen_sources = set()
+    for first_pair, second_pair in itertools.combinations(side_pairs, 2):
+        first, opposite_a = first_pair
+        perpendicular, opposite_b = second_pair
+        source_ids = {
+            str(first["wall"]["id"]), str(opposite_a["wall"]["id"]),
+            str(perpendicular["wall"]["id"]), str(opposite_b["wall"]["id"]),
+        }
+        if len(source_ids) != 4 or tuple(sorted(source_ids)) in seen_sources:
+            continue
+        # The two opposing-wall families must meet at approximately right angles.
+        axis_dot = abs(float(np.dot(first["direction"], perpendicular["direction"])))
+        angle = math.degrees(math.acos(float(np.clip(axis_dot, -1.0, 1.0))))
+        if abs(90.0 - angle) > perpendicular_tolerance_deg:
+            continue
+
+        corners = [
+            intersection(first, perpendicular),
+            intersection(opposite_a, perpendicular),
+            intersection(opposite_a, opposite_b),
+            intersection(first, opposite_b),
+        ]
+        if any(corner is None or not np.isfinite(corner).all() for corner in corners):
+            continue
+        corners_array = np.asarray(corners)
+        side_lengths = [
+            float(np.linalg.norm(corners_array[(index + 1) % 4] - corners_array[index]))
+            for index in range(4)
+        ]
+        if any(length < min_side_m or length > max_side_m for length in side_lengths):
+            continue
+        corner_angles = []
+        for index in range(4):
+            incoming = corners_array[index - 1] - corners_array[index]
+            outgoing = corners_array[(index + 1) % 4] - corners_array[index]
+            cosine = float(np.dot(incoming, outgoing) / (np.linalg.norm(incoming) * np.linalg.norm(outgoing)))
+            corner_angles.append(math.degrees(math.acos(float(np.clip(cosine, -1.0, 1.0)))))
+        if any(abs(angle_value - 90.0) > max_corner_deviation_deg
+               for angle_value in corner_angles):
+            continue
+
+        side_lines = (perpendicular, opposite_a, opposite_b, first)
+        coverage = []
+        for index, line in enumerate(side_lines):
+            side_start = corners_array[index]
+            side_end = corners_array[(index + 1) % 4]
+            direction = line["direction"]
+            side_interval = sorted((float(np.dot(side_start, direction)), float(np.dot(side_end, direction))))
+            support_interval = sorted((float(np.dot(line["start"], direction)),
+                                       float(np.dot(line["end"], direction))))
+            side_length = side_interval[1] - side_interval[0]
+            covered = max(0.0, min(side_interval[1], support_interval[1])
+                          - max(side_interval[0], support_interval[0]))
+            coverage.append(covered / side_length if side_length > 0 else 0.0)
+        if min(coverage) < min_side_coverage:
+            continue
+
+        area = abs(float(
+            np.dot(corners_array[:, 0], np.roll(corners_array[:, 1], -1))
+            - np.dot(corners_array[:, 1], np.roll(corners_array[:, 0], -1))
+        )) / 2
+        seen_sources.add(tuple(sorted(source_ids)))
+        proposals.append({
+            "id": "",
+            "boundary_xz_m": [[round(float(value), 3) for value in corner] for corner in corners_array],
+            "side_lengths_m": [round(length, 3) for length in side_lengths],
+            "corner_angles_deg": [round(value, 1) for value in corner_angles],
+            "estimated_area_m2": round(area, 2),
+            "side_support_fraction": [round(value, 3) for value in coverage],
+            "minimum_side_support_fraction": round(min(coverage), 3),
+            "source_wall_ids": [
+                str(line["wall"]["id"]) for line in side_lines
+            ],
+            "status": "candidate_unverified",
+            "reason": (
+                "Four cross-height wall segments form a closed four-sided outline. "
+                "Side coverage is partial scan evidence, not ground-truth confirmation."
+            ),
+        })
+
+    proposals.sort(key=lambda item: (
+        -float(item["minimum_side_support_fraction"]),
+        -sum(int(next(wall for wall in consensus_walls if wall["id"] == source)["support_count"])
+             for source in item["source_wall_ids"]),
+    ))
+    for index, proposal in enumerate(proposals, start=1):
+        proposal["id"] = f"wall_room_candidate_{index:02d}"
+    return proposals

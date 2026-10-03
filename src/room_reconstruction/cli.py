@@ -14,6 +14,7 @@ from .consensus import (
     annotate_current_wall_support,
     detect_wall_candidates_by_height,
     find_consensus_walls,
+    propose_wall_supported_rooms,
 )
 from .openings import infer_opening_candidates, infer_wall_gap_candidates
 from .plan import build_plan_document, capture_label
@@ -55,6 +56,7 @@ def main(argv: list[str] | None = None) -> int:
         )
         candidates_by_band = detect_wall_candidates_by_height(points)
         cross_height_wall_candidates = find_consensus_walls(candidates_by_band)
+        wall_room_candidates = propose_wall_supported_rooms(cross_height_wall_candidates)
         wall_candidates = annotate_current_wall_support(
             candidates_by_band["current"], cross_height_wall_candidates
         )
@@ -86,10 +88,14 @@ def main(argv: list[str] | None = None) -> int:
         (args.output_dir / "wall_gap_candidates.json").write_text(
             json.dumps(wall_gap_candidates, indent=2) + "\n", encoding="utf-8"
         )
+        (args.output_dir / "wall_room_candidates.json").write_text(
+            json.dumps(wall_room_candidates, indent=2) + "\n", encoding="utf-8"
+        )
         render_room_candidate_preview(
             points, room_candidates, str(args.output_dir / "room_candidates.png"),
             capture_label(args.capture), opening_candidates=opening_candidates,
             wall_gap_candidates=wall_gap_candidates,
+            wall_room_candidates=wall_room_candidates,
         )
         document = build_plan_document(
             capture=capture_label(args.capture), point_count=len(points),
@@ -99,6 +105,7 @@ def main(argv: list[str] | None = None) -> int:
             room_candidates=room_candidates,
             opening_candidates=opening_candidates,
             wall_gap_candidates=wall_gap_candidates,
+            wall_room_candidates=wall_room_candidates,
         )
         (args.output_dir / "plan.json").write_text(
             json.dumps(document, indent=2) + "\n", encoding="utf-8"
@@ -108,7 +115,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     print(
-        f"Status: partial ({len(wall_candidates)} wall, {len(room_candidates)} room, "
+        f"Status: partial ({len(wall_candidates)} wall, {len(room_candidates)} raster room, "
+        f"{len(wall_room_candidates)} wall-supported outline, "
         f"{len(opening_candidates)} room-opening, {len(wall_gap_candidates)} wall-gap, "
         f"{len(cross_height_wall_candidates)} "
         "cross-height wall candidates)"
@@ -122,4 +130,5 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Room candidate preview: {args.output_dir / 'room_candidates.png'}")
     print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
     print(f"Wall-gap candidates: {args.output_dir / 'wall_gap_candidates.json'}")
+    print(f"Wall-supported room outlines: {args.output_dir / 'wall_room_candidates.json'}")
     return 0

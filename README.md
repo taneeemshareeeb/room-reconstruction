@@ -158,6 +158,13 @@ line segments are written to
 It also lists enclosed-region candidates in `room_candidates.json` and
 `room_candidates.png`. Dashed outlines trace the occupied grid boundary; they
 are candidates, not verified room geometry or survey-grade floor areas.
+The runner also proposes four-sided outlines in `wall_room_candidates.json` by
+joining near-parallel opposing wall segments that are approximately
+perpendicular to a second pair. An outline is only emitted when the corners
+are near right angles and at least 70% of every side is directly supported by
+the scan. Each outline records its source segments and side support fractions.
+An empty list means the scan did not support a closed outline at that
+threshold; it does not mean the physical room is absent.
 Possible openings between aligned wall candidates are written to
 `opening_candidates.json`; each proposed room connection requires room
 candidates on opposite sides of that gap. Short aligned interruptions are also
@@ -186,7 +193,7 @@ python scripts/review_scan.py runs/ceiling
 ```
 
 Open the printed localhost address. The page shows the point-cloud preview and
-room, wall, and cross-height wall candidates. Candidate review marks stay in
+raster room, wall-supported outline, wall, and cross-height wall candidates. Candidate review marks stay in
 your browser; **Export review JSON** downloads them as `scan_review.json`.
 The review server reads result files and does not modify them. Stop it with
 Ctrl+C. The earlier report format does not include a point count; newer result

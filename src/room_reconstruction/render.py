@@ -130,6 +130,7 @@ def render_room_candidate_preview(
     points: np.ndarray, room_candidates: list[dict[str, object]], path: str, title: str,
     opening_candidates: list[dict[str, object]] | None = None,
     wall_gap_candidates: list[dict[str, object]] | None = None,
+    wall_room_candidates: list[dict[str, object]] | None = None,
 ) -> None:
     """Show room outlines, room openings, and unverified wall gaps."""
     points = np.asarray(points)
@@ -159,6 +160,23 @@ def render_room_candidate_preview(
         axis.text(center[0], center[1], candidate["id"], color="#9a4d00",
                   fontsize=8, ha="center", va="center",
                   bbox={"facecolor": "white", "alpha": 0.75, "edgecolor": "none"})
+    for candidate in wall_room_candidates or []:
+        boundary = candidate["boundary_xz_m"]
+        axis.add_patch(Polygon(
+            boundary, closed=True, fill=False, edgecolor="#176b50",
+            linewidth=2.5, linestyle="-",
+        ))
+        center = np.mean(np.asarray(boundary, dtype=np.float64), axis=0)
+        axis.text(center[0], center[1], candidate["id"], color="#145b3e",
+                  fontsize=8, ha="center", va="center",
+                  bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
+    if not wall_room_candidates:
+        axis.text(
+            0.02, 0.98,
+            "No wall outline met the 70% per-side scan-support threshold.",
+            transform=axis.transAxes, ha="left", va="top", color="#145b3e",
+            bbox={"facecolor": "white", "alpha": 0.88, "edgecolor": "#176b50"},
+        )
     for opening in opening_candidates or []:
         endpoints = opening["gap_endpoints_xz_m"]
         axis.plot([endpoints[0][0], endpoints[1][0]],
@@ -178,7 +196,7 @@ def render_room_candidate_preview(
         axis.text(center[0], center[1], f"{gap['observed_gap_m']:.2f} m",
                   color="#07556b", fontsize=8, ha="center", va="top",
                   bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
-    axis.set_title(f"{title}\nROOM, OPENING AND WALL-GAP CANDIDATES — REVIEW REQUIRED")
+    axis.set_title(f"{title}\nROOM OUTLINES, OPENINGS AND WALL GAPS — REVIEW REQUIRED")
     axis.set_xlabel("World x (m)")
     axis.set_ylabel("World z (m)")
     axis.set_aspect("equal", adjustable="datalim")

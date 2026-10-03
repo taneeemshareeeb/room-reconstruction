@@ -1,13 +1,13 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://room-reconstruction.local/schemas/plan-0.3.0.json",
+  "$id": "https://room-reconstruction.local/schemas/plan-0.4.0.json",
   "title": "Room reconstruction result",
   "description": "Versioned result contract. Unavailable measurements are represented explicitly, never guessed.",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "wall_gap_candidates", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
+  "required": ["schema_version", "status", "created_at", "capture", "processing", "rooms", "wall_candidates", "cross_height_wall_candidates", "room_candidates", "opening_candidates", "wall_gap_candidates", "wall_room_candidates", "room_connections", "scope_line_items", "capabilities", "artifacts", "limitations"],
   "properties": {
-    "schema_version": {"const": "0.3.0"},
+    "schema_version": {"const": "0.4.0"},
     "status": {"enum": ["partial", "complete", "failed"]},
     "created_at": {"type": "string", "format": "date-time"},
     "capture": {
@@ -28,6 +28,7 @@
     "room_candidates": {"type": "array", "items": {"$ref": "#/$defs/room_candidate"}},
     "opening_candidates": {"type": "array", "items": {"$ref": "#/$defs/opening_candidate"}},
     "wall_gap_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_gap_candidate"}},
+    "wall_room_candidates": {"type": "array", "items": {"$ref": "#/$defs/wall_room_candidate"}},
     "room_connections": {"type": "array", "items": {"$ref": "#/$defs/room_connection"}},
     "scope_line_items": {"type": "array", "items": {"$ref": "#/$defs/scope_item"}},
     "capabilities": {"type": "object", "additionalProperties": {"enum": ["available", "candidate_available", "not_implemented", "insufficient_data"]}},
@@ -130,6 +131,22 @@
         "observed_gap_m": {"type": "number", "exclusiveMinimum": 0},
         "supporting_height_bands": {"type": "array", "items": {"enum": ["lower", "current", "upper"]}, "uniqueItems": true},
         "height_band_support_count": {"type": "integer", "minimum": 1, "maximum": 3},
+        "status": {"const": "candidate_unverified"},
+        "reason": {"type": "string"}
+      }
+    },
+    "wall_room_candidate": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "boundary_xz_m", "side_lengths_m", "corner_angles_deg", "estimated_area_m2", "side_support_fraction", "minimum_side_support_fraction", "source_wall_ids", "status", "reason"],
+      "properties": {
+        "id": {"type": "string"},
+        "boundary_xz_m": {"type": "array", "items": {"$ref": "#/$defs/point2d"}, "minItems": 4, "maxItems": 4},
+        "side_lengths_m": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0}, "minItems": 4, "maxItems": 4},
+        "corner_angles_deg": {"type": "array", "items": {"type": "number", "exclusiveMinimum": 0, "maximum": 180}, "minItems": 4, "maxItems": 4},
+        "estimated_area_m2": {"type": "number", "exclusiveMinimum": 0},
+        "side_support_fraction": {"type": "array", "items": {"type": "number", "minimum": 0, "maximum": 1}, "minItems": 4, "maxItems": 4},
+        "minimum_side_support_fraction": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "source_wall_ids": {"type": "array", "items": {"type": "string"}, "minItems": 4, "maxItems": 4, "uniqueItems": true},
         "status": {"const": "candidate_unverified"},
         "reason": {"type": "string"}
       }
