@@ -15,7 +15,7 @@ from .consensus import (
     detect_wall_candidates_by_height,
     find_consensus_walls,
 )
-from .openings import infer_opening_candidates
+from .openings import infer_opening_candidates, infer_wall_gap_candidates
 from .plan import build_plan_document, capture_label
 from .pointcloud import load_archive_point_cloud, load_capture_point_cloud
 from .render import (
@@ -76,15 +76,20 @@ def main(argv: list[str] | None = None) -> int:
         )
         room_candidates = detect_room_candidates(points)
         opening_candidates = infer_opening_candidates(wall_candidates, room_candidates)
+        wall_gap_candidates = infer_wall_gap_candidates(wall_candidates)
         (args.output_dir / "room_candidates.json").write_text(
             json.dumps(room_candidates, indent=2) + "\n", encoding="utf-8"
         )
         (args.output_dir / "opening_candidates.json").write_text(
             json.dumps(opening_candidates, indent=2) + "\n", encoding="utf-8"
         )
+        (args.output_dir / "wall_gap_candidates.json").write_text(
+            json.dumps(wall_gap_candidates, indent=2) + "\n", encoding="utf-8"
+        )
         render_room_candidate_preview(
             points, room_candidates, str(args.output_dir / "room_candidates.png"),
             capture_label(args.capture), opening_candidates=opening_candidates,
+            wall_gap_candidates=wall_gap_candidates,
         )
         document = build_plan_document(
             capture=capture_label(args.capture), point_count=len(points),
@@ -93,6 +98,7 @@ def main(argv: list[str] | None = None) -> int:
             cross_height_wall_candidates=cross_height_wall_candidates,
             room_candidates=room_candidates,
             opening_candidates=opening_candidates,
+            wall_gap_candidates=wall_gap_candidates,
         )
         (args.output_dir / "plan.json").write_text(
             json.dumps(document, indent=2) + "\n", encoding="utf-8"
@@ -103,7 +109,8 @@ def main(argv: list[str] | None = None) -> int:
 
     print(
         f"Status: partial ({len(wall_candidates)} wall, {len(room_candidates)} room, "
-        f"{len(opening_candidates)} opening, {len(cross_height_wall_candidates)} "
+        f"{len(opening_candidates)} room-opening, {len(wall_gap_candidates)} wall-gap, "
+        f"{len(cross_height_wall_candidates)} "
         "cross-height wall candidates)"
     )
     print(f"Result: {args.output_dir / 'plan.json'}")
@@ -114,4 +121,5 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Cross-height wall preview: {args.output_dir / 'cross_height_wall_candidates.png'}")
     print(f"Room candidate preview: {args.output_dir / 'room_candidates.png'}")
     print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
+    print(f"Wall-gap candidates: {args.output_dir / 'wall_gap_candidates.json'}")
     return 0

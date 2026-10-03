@@ -22,7 +22,8 @@ there is no single trusted room depth or area yet.
 
 ## Current scan comparison
 
-The scan produced 4 room candidates and no opening candidates. Candidate 03 is
+The scan produced 4 room candidates, no room-linked opening candidates, and 4
+separate wall-gap candidates. Candidate 03 is
 the closest size match by its outline's approximate rotated spans, about
 3.22 m × 3.93 m. Against the measured width average of 3.34 m, its short span
 is about 0.12 m (3.6%) smaller. Its long span is between the two conflicting
@@ -36,17 +37,25 @@ cannot serve as settled ground truth. The candidate area is substantially
 smaller and its outline is fragmented, so the current room boundary and area
 are not reliable measurements.
 
-The measured 0.85 m doorway has no corresponding opening candidate in this
-run. The 2.63 m ceiling height is not evaluated: the current output does not
-fit a room-specific floor-to-ceiling height.
+The closest wall gap is 0.819 m, only 0.031 m (3.6%) narrower than the measured
+doorway. Both bounding wall traces have support in all three height bands.
+This is promising evidence, but the gap is not linked to a room pair: the
+existing opening rule requires room candidates on both sides, while the scan
+only has a nearby room candidate on one side. The scan and sketch also have not
+been spatially registered, so this gap cannot yet be confirmed as this
+doorway. The other wall-gap candidates measure 0.460, 0.466, and 0.570 m.
+
+The 2.63 m ceiling height is not evaluated: the current output does not fit a
+room-specific floor-to-ceiling height.
 
 ## What this establishes
 
 - The scan contains a room candidate with rough dimensions in the right range.
 - The room-to-sketch match remains uncertain because the scan has no visual
   registration to the sketch and the room lengths are unresolved.
-- The detector missed the measured doorway and underestimates the candidate's
-  enclosed area; the output is not ready for room measurements.
+- The scan contains a strongly supported wall gap close to the measured
+  doorway width, but has not classified it as a doorway. The candidate room
+  area is still substantially low.
 - Re-measure the left and right room lengths before treating area or depth as
   an accuracy metric. Then associate the measured room with a scan region and
   evaluate doorway and ceiling-height detection.

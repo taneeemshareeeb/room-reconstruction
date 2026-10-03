@@ -17,6 +17,7 @@ JSON_FILES = {
     "rooms": "room_candidates.json",
     "walls": "wall_candidates.json",
     "openings": "opening_candidates.json",
+    "wall_gaps": "wall_gap_candidates.json",
     "consensus": "cross_height_wall_candidates.json",
 }
 IMAGE_FILES = {

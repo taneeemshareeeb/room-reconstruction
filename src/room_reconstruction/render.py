@@ -129,8 +129,9 @@ def render_wall_consensus_preview(
 def render_room_candidate_preview(
     points: np.ndarray, room_candidates: list[dict[str, object]], path: str, title: str,
     opening_candidates: list[dict[str, object]] | None = None,
+    wall_gap_candidates: list[dict[str, object]] | None = None,
 ) -> None:
-    """Show room outlines and possible opening gaps over the evidence slice."""
+    """Show room outlines, room openings, and unverified wall gaps."""
     points = np.asarray(points)
     figure, axis = plt.subplots(figsize=(10, 8), constrained_layout=True)
     if len(points) == 0:
@@ -167,7 +168,17 @@ def render_room_candidate_preview(
         axis.text(center[0], center[1], opening["id"], color="#9c146f",
                   fontsize=8, ha="center", va="bottom",
                   bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
-    axis.set_title(f"{title}\nROOM AND OPENING CANDIDATES — REVIEW REQUIRED")
+    for gap in wall_gap_candidates or []:
+        endpoints = gap["gap_endpoints_xz_m"]
+        axis.plot([endpoints[0][0], endpoints[1][0]],
+                  [endpoints[0][1], endpoints[1][1]],
+                  color="#177c9c", linewidth=4, linestyle="--",
+                  solid_capstyle="round")
+        center = gap["center_xz_m"]
+        axis.text(center[0], center[1], f"{gap['observed_gap_m']:.2f} m",
+                  color="#07556b", fontsize=8, ha="center", va="top",
+                  bbox={"facecolor": "white", "alpha": 0.8, "edgecolor": "none"})
+    axis.set_title(f"{title}\nROOM, OPENING AND WALL-GAP CANDIDATES — REVIEW REQUIRED")
     axis.set_xlabel("World x (m)")
     axis.set_ylabel("World z (m)")
     axis.set_aspect("equal", adjustable="datalim")

@@ -160,7 +160,10 @@ It also lists enclosed-region candidates in `room_candidates.json` and
 are candidates, not verified room geometry or survey-grade floor areas.
 Possible openings between aligned wall candidates are written to
 `opening_candidates.json`; each proposed room connection requires room
-candidates on opposite sides of that gap.
+candidates on opposite sides of that gap. Short aligned interruptions are also
+listed in `wall_gap_candidates.json`, even when the other side has no room
+candidate. These gaps are not classified as doorways automatically; the review
+page shows them in a separate Door / gaps tab.
 `plan.json` keeps the verified room list empty, and openings, adjacencies,
 dimensions, and floor areas still need validation.
 Current floor-only and floor-and-ceiling candidate outputs are compared in

@@ -7,6 +7,96 @@ from itertools import combinations
 import numpy as np
 
 
+def infer_wall_gap_candidates(
+    wall_candidates: list[dict[str, object]],
+    *,
+    min_gap_m: float = 0.4,
+    max_gap_m: float = 1.3,
+    max_offset_m: float = 0.2,
+) -> list[dict[str, object]]:
+    """Return short, aligned interruptions between wall traces.
+
+    A gap is geometric evidence only. It may be a doorway, missing scan data,
+    or a wall-detection failure; room adjacency is evaluated separately.
+    """
+    if min_gap_m <= 0 or max_gap_m < min_gap_m or max_offset_m <= 0:
+        raise ValueError("wall gap and offset limits must be positive and ordered")
+
+    found: list[dict[str, object]] = []
+    for first, second in combinations(wall_candidates, 2):
+        p = np.asarray(first["start_xz_m"], dtype=np.float64)
+        q = np.asarray(first["end_xz_m"], dtype=np.float64)
+        r = np.asarray(second["start_xz_m"], dtype=np.float64)
+        s = np.asarray(second["end_xz_m"], dtype=np.float64)
+        first_vector = q - p
+        first_length = float(np.linalg.norm(first_vector))
+        second_vector = s - r
+        second_length = float(np.linalg.norm(second_vector))
+        if first_length <= 0 or second_length <= 0:
+            continue
+        direction = first_vector / first_length
+        if abs(float(np.dot(direction, second_vector / second_length))) < 0.995:
+            continue
+        normal = np.array([-direction[1], direction[0]])
+        first_offset = float(np.dot((p + q) / 2, normal))
+        second_offset = float(np.dot((r + s) / 2, normal))
+        if abs(first_offset - second_offset) > max_offset_m:
+            continue
+
+        first_interval = sorted((float(np.dot(p, direction)), float(np.dot(q, direction))))
+        second_interval = sorted((float(np.dot(r, direction)), float(np.dot(s, direction))))
+        if first_interval[1] < second_interval[0]:
+            gap = second_interval[0] - first_interval[1]
+            gap_start_t, gap_end_t = first_interval[1], second_interval[0]
+        elif second_interval[1] < first_interval[0]:
+            gap = first_interval[0] - second_interval[1]
+            gap_start_t, gap_end_t = second_interval[1], first_interval[0]
+        else:
+            continue
+        if not min_gap_m <= gap <= max_gap_m:
+            continue
+
+        offset = (first_offset + second_offset) / 2
+        center_t = (gap_start_t + gap_end_t) / 2
+        midpoint = direction * center_t + normal * offset
+        endpoints = [
+            direction * gap_start_t + normal * offset,
+            direction * gap_end_t + normal * offset,
+        ]
+        if any(
+            np.linalg.norm(np.asarray(candidate["center_xz_m"]) - midpoint) < 0.3
+            for candidate in found
+        ):
+            continue
+
+        shared_bands = sorted(
+            set(first.get("supporting_height_bands", []))
+            & set(second.get("supporting_height_bands", []))
+        )
+        support_count = min(
+            int(first.get("height_band_support_count", 1)),
+            int(second.get("height_band_support_count", 1)),
+        )
+        found.append({
+            "id": f"wall_gap_candidate_{len(found) + 1:02d}",
+            "wall_candidate_ids": [str(first["id"]), str(second["id"])],
+            "center_xz_m": [round(float(value), 3) for value in midpoint],
+            "gap_endpoints_xz_m": [
+                [round(float(value), 3) for value in endpoint]
+                for endpoint in endpoints
+            ],
+            "observed_gap_m": round(float(gap), 3),
+            "supporting_height_bands": shared_bands,
+            "height_band_support_count": min(support_count, len(shared_bands)) if shared_bands else support_count,
+            "status": "candidate_unverified",
+            "reason": (
+                "Short gap between aligned wall traces; could be a doorway, "
+                "missing scan data, or a wall-detection failure."
+            ),
+        })
+    return found
+
+
 def infer_opening_candidates(
     wall_candidates: list[dict[str, object]],
     room_candidates: list[dict[str, object]],
