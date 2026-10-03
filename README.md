@@ -93,6 +93,18 @@ is an experiment: it may remove real isolated surfaces along with noise, so
 the unfiltered cloud remains unchanged. It reads the ZIP directly; use
 `--input path/to/cloud.npz` to compare a saved point cloud instead.
 
+To see where the ceiling-inclusive scan has point support at different heights,
+run:
+
+```sh
+PYTHONPATH=src python scripts/inspect_scan_coverage.py
+```
+
+This writes `reports/single_scan_with_ceiling_coverage.png`, with one map for
+the floor, lower wall, room-detection, and upper wall/ceiling bands. Empty
+cells indicate little or no point support at that height; they are a capture
+coverage diagnostic, not proof that a surface is physically absent.
+
 ## Running the reconstruction app
 
 The first runnable milestone accepts one LiDAR capture directory or ZIP. It
