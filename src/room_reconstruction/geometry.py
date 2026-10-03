@@ -21,6 +21,8 @@ def estimate_floor_height(points: np.ndarray) -> float:
 def detect_wall_candidates(
     points: np.ndarray,
     *,
+    slice_min_height_m: float = 0.85,
+    slice_max_height_m: float = 1.55,
     grid_size_m: float = 0.08,
     line_tolerance_m: float = 0.10,
     min_length_m: float = 1.5,
@@ -29,9 +31,9 @@ def detect_wall_candidates(
 ) -> list[dict[str, object]]:
     """Find long line traces in a horizontal slice above the estimated floor.
 
-    The densest low-height band estimates floor elevation. Points between 0.85
-    m and 1.55 m above it are projected to x/z before fitting. The result is
-    candidates only: it does not claim that a trace is a verified wall or
+    The densest low-height band estimates floor elevation. Points between the
+    requested heights above it are projected to x/z before fitting. The result
+    is candidates only: it does not claim that a trace is a verified wall or
     assign walls to rooms. This assumes world y is up and the low mode is floor.
     """
     cloud = np.asarray(points, dtype=np.float64)
@@ -39,6 +41,13 @@ def detect_wall_candidates(
         raise ValueError("points must have shape N x 3")
     if not np.isfinite(cloud).all():
         raise ValueError("points must contain only finite coordinates")
+    if (
+        not np.isfinite(slice_min_height_m)
+        or not np.isfinite(slice_max_height_m)
+        or slice_min_height_m < 0
+        or slice_max_height_m <= slice_min_height_m
+    ):
+        raise ValueError("slice heights must be finite, non-negative, and ordered")
     if grid_size_m <= 0 or line_tolerance_m <= 0:
         raise ValueError("grid size and line tolerance must be positive")
     if min_length_m <= 0 or max_lines < 1:
@@ -50,7 +59,8 @@ def detect_wall_candidates(
     # captures. A narrow slice avoids mixing floor/ceiling passes into the plan.
     floor_y = estimate_floor_height(cloud)
     slice_points = cloud[
-        (cloud[:, 1] >= floor_y + 0.85) & (cloud[:, 1] <= floor_y + 1.55)
+        (cloud[:, 1] >= floor_y + slice_min_height_m)
+        & (cloud[:, 1] <= floor_y + slice_max_height_m)
     ]
     if len(slice_points) < 2:
         return []
@@ -168,7 +178,8 @@ def detect_wall_candidates(
                 "supporting_cells": support_cells,
                 "status": "candidate_unverified",
                 "reason": (
-                    f"Line fit in the {floor_y + 0.85:.2f}–{floor_y + 1.55:.2f} m "
+                    f"Line fit in the {floor_y + slice_min_height_m:.2f}–"
+                    f"{floor_y + slice_max_height_m:.2f} m "
                     "height slice; visual confirmation required."
                 ),
             })

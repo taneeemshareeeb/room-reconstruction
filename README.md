@@ -105,6 +105,18 @@ the floor, lower wall, room-detection, and upper wall/ceiling bands. Empty
 cells indicate little or no point support at that height; they are a capture
 coverage diagnostic, not proof that a surface is physically absent.
 
+To check whether the room and wall candidates change when we use other wall
+heights, run:
+
+```sh
+PYTHONPATH=src python scripts/compare_vertical_slices.py
+```
+
+This compares lower, current, upper, and combined height bands in
+`reports/single_scan_with_ceiling_vertical_slices.png`. It is an experiment
+for choosing where to look for geometry; candidate changes do not establish
+which band is more accurate.
+
 ## Running the reconstruction app
 
 The first runnable milestone accepts one LiDAR capture directory or ZIP. It
