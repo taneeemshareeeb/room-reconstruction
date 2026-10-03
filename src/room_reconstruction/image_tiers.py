@@ -8,6 +8,8 @@ does not report metric room geometry.
 from __future__ import annotations
 
 import json
+from io import BytesIO
+import zipfile
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -19,7 +21,7 @@ from pillow_heif import register_heif_opener
 register_heif_opener()
 
 IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".heic", ".heif", ".tif", ".tiff", ".bmp"}
-VIDEO_SUFFIXES = {".mp4", ".mov", ".m4v", ".avi", ".mkv"}
+VIDEO_SUFFIXES = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".zip"}
 MAX_PHOTO_COUNT = 120
 MAX_VIDEO_FRAMES = 60
 MAX_MOSAIC_PIXELS = 12_000_000
@@ -61,19 +63,22 @@ def _read_photos(paths: list[Path], max_width: int = 1200) -> tuple[list[np.ndar
     return images, names
 
 
-def _read_video(path: Path, sample_seconds: float) -> tuple[list[np.ndarray], list[str], float]:
+def _read_video(path: Path, sample_seconds: float) -> tuple[list[np.ndarray], list[str], float, float]:
+    if path.suffix.lower() == ".zip":
+        return _read_video_from_zip(path, sample_seconds)
     capture = cv2.VideoCapture(str(path))
     if not capture.isOpened():
         raise ValueError(f"could not open video: {path}")
     fps = float(capture.get(cv2.CAP_PROP_FPS))
-    if not np.isfinite(fps) or fps <= 0:
+    frame_count = int(capture.get(cv2.CAP_PROP_FRAME_COUNT))
+    if not np.isfinite(fps) or fps <= 0 or frame_count <= 0:
         capture.release()
-        raise ValueError("video does not report a usable frame rate")
-    interval = max(1, round(fps * sample_seconds))
+        raise ValueError("video does not report usable frame rate and length metadata")
+    interval = max(1, round(fps * sample_seconds), (frame_count - 1) // (MAX_VIDEO_FRAMES - 1))
     frames, names = [], []
     index = 0
     try:
-        while len(frames) < MAX_VIDEO_FRAMES:
+        while True:
             ok, frame = capture.read()
             if not ok:
                 break
@@ -88,7 +93,64 @@ def _read_video(path: Path, sample_seconds: float) -> tuple[list[np.ndarray], li
         capture.release()
     if not frames:
         raise ValueError(f"video contained no decodable frames: {path}")
-    return frames, names, fps
+    return frames, names, fps, interval / fps
+
+
+def _read_video_from_zip(
+    path: Path, sample_seconds: float,
+) -> tuple[list[np.ndarray], list[str], float, float]:
+    """Decode an rgb.mp4 member from seekable memory without extracting it."""
+    import av
+
+    with zipfile.ZipFile(path) as archive:
+        videos = [item for item in archive.infolist() if Path(item.filename).name.lower() == "rgb.mp4"]
+        if len(videos) != 1:
+            raise ValueError(f"expected one rgb.mp4 in {path.name}, found {len(videos)}")
+        member = videos[0]
+        if member.file_size > 1_000_000_000:
+            raise ValueError("rgb.mp4 is too large for bounded in-memory video decoding")
+        video_bytes = archive.read(member)
+    try:
+        container = av.open(BytesIO(video_bytes))
+    except av.FFmpegError as exc:
+        raise ValueError(f"could not open rgb.mp4 from ZIP: {exc}") from exc
+    try:
+        stream = next((item for item in container.streams if item.type == "video"), None)
+        if stream is None:
+            raise ValueError("rgb.mp4 contains no video stream")
+        fps = float(stream.average_rate) if stream.average_rate else 0.0
+        if not np.isfinite(fps) or fps <= 0:
+            raise ValueError("rgb.mp4 does not report a usable frame rate")
+        duration_s = (
+            float(stream.duration * stream.time_base)
+            if stream.duration and stream.time_base
+            else float(container.duration / av.time_base) if container.duration else 0.0
+        )
+        frame_count = int(stream.frames or round(duration_s * fps))
+        interval = max(
+            1, round(fps * sample_seconds),
+            (frame_count - 1) // (MAX_VIDEO_FRAMES - 1) if frame_count > 1 else 1,
+        )
+        frames, names = [], []
+        frame_index = 0
+        for decoded in container.decode(stream):
+            if frame_index % interval == 0:
+                frame = decoded.to_ndarray(format="bgr24")
+                height, width = frame.shape[:2]
+                if width > 1200:
+                    frame = cv2.resize(
+                        frame, (1200, round(height * 1200 / width)), interpolation=cv2.INTER_AREA
+                    )
+                frames.append(frame)
+                names.append(f"rgb.mp4@{frame_index / fps:.2f}s")
+            frame_index += 1
+    except av.FFmpegError as exc:
+        raise ValueError(f"could not decode rgb.mp4 from ZIP: {exc}") from exc
+    finally:
+        container.close()
+    if not frames:
+        raise ValueError("no sampled frames could be decoded from rgb.mp4")
+    return frames, names, fps, interval / fps
 
 
 def _estimate_mosaic(
@@ -153,7 +215,12 @@ def _estimate_mosaic(
     all_corners = np.concatenate(corners_all)
     minimum, maximum = np.floor(all_corners.min(axis=0)), np.ceil(all_corners.max(axis=0))
     width, height = (maximum - minimum).astype(int)
-    if width < 1 or height < 1 or width * height > MAX_MOSAIC_PIXELS:
+    required_registrations = max(1, int(np.ceil((len(images) - 1) * 0.2)))
+    if (
+        accepted < required_registrations
+        or width < 1 or height < 1
+        or width * height > MAX_MOSAIC_PIXELS
+    ):
         columns = 4
         tile_w, tile_h, title_h, margin = 320, 240, 30, 12
         rows = (len(images) + columns - 1) // columns
@@ -197,10 +264,11 @@ def process_image_tier(
     try:
         paths = _collect_inputs(input_path, tier)
         frame_rate = None
+        actual_sample_seconds = None
         if tier == "photos":
             images, names = _read_photos(paths)
         else:
-            images, names, frame_rate = _read_video(paths[0], sample_seconds)
+            images, names, frame_rate, actual_sample_seconds = _read_video(paths[0], sample_seconds)
         if len(images) < 2:
             raise ValueError(f"{tier} tier needs at least two usable images or sampled video frames")
         mosaic, pairs, accepted, preview_kind = _estimate_mosaic(images)
@@ -215,8 +283,9 @@ def process_image_tier(
     labeled[banner_height:] = mosaic
     cv2.putText(
         labeled,
-        ("VISUAL MOSAIC CANDIDATE - NOT A METRIC FLOOR PLAN" if preview_kind == "mosaic_candidate"
-         else "PHOTO CONTACT SHEET - NO STABLE GLOBAL MOSAIC FOUND"),
+        (f"{tier.upper()} MOSAIC CANDIDATE - NOT A METRIC FLOOR PLAN"
+         if preview_kind == "mosaic_candidate"
+         else f"{tier.upper()} CONTACT SHEET - NO STABLE GLOBAL MOSAIC FOUND"),
         (14, 34), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2, cv2.LINE_AA,
     )
     if not cv2.imwrite(str(preview_path), labeled):
@@ -228,10 +297,19 @@ def process_image_tier(
         "image_names": names,
         "adjacent_pair_matches": pairs,
         "registered_adjacent_pairs": accepted,
+        "minimum_registrations_for_mosaic": max(1, int(np.ceil((len(images) - 1) * 0.2))),
+        "registered_pair_fraction": round(accepted / max(1, len(images) - 1), 3),
         "preview_kind": preview_kind,
         "mosaic_size_px": [int(mosaic.shape[1]), int(mosaic.shape[0])],
         "video_fps": frame_rate,
         "sample_seconds": sample_seconds if tier == "video" else None,
+        "actual_sampling_interval_s": actual_sample_seconds,
+        "video_frame_limit": MAX_VIDEO_FRAMES if tier == "video" else None,
+        "video_sampling_note": (
+            f"At most {MAX_VIDEO_FRAMES} frames are sampled across the video; the effective interval "
+            f"is {actual_sample_seconds:.2f} seconds."
+            if tier == "video" else None
+        ),
         "metric_geometry_status": "insufficient_data",
         "metric_geometry_reason": (
             "Monocular images do not provide reliable metric scale or camera poses. "

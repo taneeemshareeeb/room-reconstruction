@@ -63,7 +63,7 @@ def main(argv: list[str] | None = None) -> int:
             (args.output_dir / "plan.json").write_text(
                 json.dumps(plan, indent=2) + "\n", encoding="utf-8"
             )
-        except (OSError, ValueError, TypeError, RuntimeError) as exc:
+        except (OSError, ValueError, TypeError, RuntimeError, zipfile.BadZipFile) as exc:
             print(f"Could not process {args.tier} capture: {exc}", file=sys.stderr)
             return 1
         print(

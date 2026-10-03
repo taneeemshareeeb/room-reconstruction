@@ -136,14 +136,20 @@
       const tier=((data.files.plan || {}).capture || {}).tier;
       const visible=views.filter(view=>tier === "photos" || tier === "video" ? ["overview","overlap"].includes(view.key) : view.key !== "overlap");
       document.querySelector("#tabs").innerHTML = visible.map(view => {
-        const label=view.key === "overview" && tier !== "lidar" ? (tier === "video" ? "Video mosaic" : "Photo mosaic") : view.label;
+        const label=view.key === "overview" && tier !== "lidar" ? (tier === "video" ? "Video preview" : "Photo preview") : view.label;
         return `<button class="tab ${active===view.key?"active":""}" data-view="${view.key}">${label}</button>`;
       }).join("");
       document.querySelectorAll("[data-view]").forEach(button => button.addEventListener("click", () => { active=button.dataset.view; render(); }));
     }
     function renderImage() {
       const view = views.find(item => item.key === active), wrap=document.querySelector("#image-wrap");
-      document.querySelector("#caption").textContent = view.note;
+      const tier=((data.files.plan || {}).capture || {}).tier, analysis=data.files.image_analysis || {};
+      const note=view.key === "overview" && (tier === "photos" || tier === "video")
+        ? (analysis.preview_kind === "contact_sheet"
+          ? "Contact sheet shown because adjacent image matches did not support a stable global mosaic. This is image coverage review, not a floor plan."
+          : "Image-space panorama candidate assembled from adjacent feature matches. Accumulated drift is possible; this is not a metric floor plan.")
+        : view.note;
+      document.querySelector("#caption").textContent = note;
       if (!data.images.includes(view.image)) { wrap.innerHTML=`<div class="empty">${esc(view.image)} is missing.<br>Generate a result folder with <code>run.py</code> first.</div>`; return; }
       wrap.innerHTML=`<img src="/artifact/${view.image}" alt="${esc(view.label)} preview">`;
     }

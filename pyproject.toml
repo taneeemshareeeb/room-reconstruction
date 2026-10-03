@@ -15,6 +15,7 @@ dependencies = [
     "matplotlib>=3.8",
     "opencv-python-headless>=4.10,<5",
     "pillow-heif>=0.16",
+    "av>=12,<16",
 ]
 
 [tool.setuptools.packages.find]

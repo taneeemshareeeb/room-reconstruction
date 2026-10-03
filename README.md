@@ -168,11 +168,19 @@ For a folder of HEIC/JPEG/PNG photos, run:
 PYTHONPATH=src python run.py data/raw --tier photos --output-dir runs/photos
 ```
 
-For one MP4/MOV video, sample a frame every two seconds:
+For one MP4/MOV video, sample a frame every two seconds (up to 60 frames):
 
 ```sh
 PYTHONPATH=src python run.py path/to/walkthrough.mp4 --tier video \
   --sample-seconds 2 --output-dir runs/video
+```
+
+The `video` tier also accepts any of the LiDAR ZIP archives and reads their
+`rgb.mp4` member into seekable memory for decoding; the ZIP is not extracted:
+
+```sh
+PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
+  --tier video --sample-seconds 2 --output-dir runs/video_from_zip
 ```
 
 Photo/video output includes `plan.png` (mosaic candidate or contact sheet),
