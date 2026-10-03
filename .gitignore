@@ -20,3 +20,6 @@ desktop.ini
 /data/raw/*
 !/data/raw/.gitkeep
 
+# Processed scan outputs and editable-install metadata are generated locally.
+/runs/
+/src/room_reconstruction.egg-info/
