@@ -24,6 +24,7 @@ from .passes import NoPassSplitError, detect_camera_pass_split
 from .plan import build_plan_document, capture_label
 from .pointcloud import load_archive_point_cloud, load_capture_point_cloud, voxel_downsample
 from .render import (
+    render_room_region_map,
     render_point_cloud_preview,
     render_room_candidate_preview,
     render_wall_consensus_preview,
@@ -212,6 +213,11 @@ def main(argv: list[str] | None = None) -> int:
             wall_room_candidates=wall_room_candidates,
             partial_wall_room_candidates=partial_wall_room_candidates,
         )
+        render_room_region_map(
+            room_candidates,
+            str(args.output_dir / "room_layout_draft.png"),
+            capture_label(args.capture),
+        )
         document = build_plan_document(
             capture=capture_label(args.capture), point_count=len(points),
             frame_step=args.frame_step, voxel_size_m=args.voxel_size,
@@ -248,6 +254,7 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Cross-height wall support: {args.output_dir / 'cross_height_wall_candidates.json'}")
     print(f"Cross-height wall preview: {args.output_dir / 'cross_height_wall_candidates.png'}")
     print(f"Room candidate preview: {args.output_dir / 'room_candidates.png'}")
+    print(f"Room-region map: {args.output_dir / 'room_layout_draft.png'}")
     print(f"Opening candidates: {args.output_dir / 'opening_candidates.json'}")
     print(f"Wall-gap candidates: {args.output_dir / 'wall_gap_candidates.json'}")
     print(f"Wall-supported room outlines: {args.output_dir / 'wall_room_candidates.json'}")

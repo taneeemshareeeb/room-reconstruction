@@ -87,6 +87,7 @@ def build_plan_document(
             "cross_height_wall_candidates": "cross_height_wall_candidates.json",
             "cross_height_wall_candidates_preview": "cross_height_wall_candidates.png",
             "room_candidates_preview": "room_candidates.png",
+            "room_layout_draft": "room_layout_draft.png",
             "opening_candidates": "opening_candidates.json",
             "wall_gap_candidates": "wall_gap_candidates.json",
             "wall_room_candidates": "wall_room_candidates.json",

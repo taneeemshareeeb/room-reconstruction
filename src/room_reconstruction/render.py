@@ -230,3 +230,64 @@ def render_room_candidate_preview(
     axis.grid(alpha=0.18)
     figure.savefig(path, dpi=180, bbox_inches="tight")
     plt.close(figure)
+
+
+def render_room_region_map(
+    room_candidates: list[dict[str, object]],
+    path: str,
+    title: str,
+) -> None:
+    """Render a clean, scaled map of detected room-region candidates.
+
+    This intentionally omits the point cloud so candidate room boundaries and
+    approximate dimensions are readable. Unconnected regions are not presented
+    as a complete floor plan.
+    """
+    figure, axis = plt.subplots(figsize=(11, 8), constrained_layout=True)
+    palette = ["#dcefe8", "#e8e3f3", "#f7e8d4", "#dce9f5", "#f3dfdf"]
+    plotted = False
+    all_boundaries = []
+    for index, candidate in enumerate(room_candidates):
+        boundary = np.asarray(candidate.get("boundary_xz_m", []), dtype=np.float64)
+        if boundary.ndim != 2 or boundary.shape[0] < 4 or boundary.shape[1] != 2:
+            continue
+        all_boundaries.append(boundary)
+        axis.add_patch(Polygon(
+            boundary, closed=True, facecolor=palette[index % len(palette)],
+            edgecolor="#27364b", linewidth=2.0, alpha=0.8,
+        ))
+        geometry = candidate.get("geometry_candidate", {})
+        spans = geometry.get("dominant_axis_spans_m", [])
+        dimension_text = " × ".join(f"{float(value):.2f}" for value in spans)
+        label = f"{candidate.get('id', 'room')}\n{float(candidate.get('estimated_area_m2', 0)):.1f} m²"
+        if dimension_text:
+            label += f"\n~{dimension_text} m"
+        center = np.asarray(candidate.get("center_xz_m", boundary.mean(axis=0)), dtype=np.float64)
+        axis.text(
+            center[0], center[1], label, ha="center", va="center", fontsize=9,
+            color="#18243a",
+            bbox={"facecolor": "white", "alpha": 0.88, "edgecolor": "#aab4c0", "boxstyle": "round,pad=0.35"},
+        )
+        plotted = True
+
+    if not plotted:
+        axis.text(0.5, 0.5, "No room-region candidates were detected.",
+                  transform=axis.transAxes, ha="center", va="center")
+        axis.set_xlim(-1, 1)
+        axis.set_ylim(-1, 1)
+    else:
+        points = np.concatenate(all_boundaries, axis=0)
+        minimum = points.min(axis=0)
+        maximum = points.max(axis=0)
+        padding = max(0.5, float(np.max(maximum - minimum)) * 0.08)
+        axis.set_xlim(float(minimum[0] - padding), float(maximum[0] + padding))
+        axis.set_ylim(float(minimum[1] - padding), float(maximum[1] + padding))
+    axis.set_title(
+        f"{title}\nROOM-REGION MAP · detected regions are unverified and not a connected floor plan"
+    )
+    axis.set_xlabel("World x (m)")
+    axis.set_ylabel("World z (m)")
+    axis.set_aspect("equal", adjustable="box")
+    axis.grid(alpha=0.2)
+    figure.savefig(path, dpi=180, bbox_inches="tight")
+    plt.close(figure)

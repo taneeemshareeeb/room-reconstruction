@@ -75,6 +75,7 @@
     const APP_MODE = __APP_MODE__;
     const views = [
       {key:"overview", label:"Point cloud", image:"plan.png", note:"Projected point cloud preview. This is not a floor plan."},
+      {key:"layout", label:"Region map", image:"room_layout_draft.png", note:"Scaled map of detected room-region candidates. Regions are unverified and are not a connected floor plan."},
       {key:"rooms", label:"Raster rooms", image:"room_candidates.png", note:"Dashed orange outlines are enclosed-region candidates; solid green outlines are supported wall loops. Both need review."},
       {key:"metrics", label:"Room metrics", image:"room_candidates.png", note:"Rough spans and pass-specific surface samples inside each raster room region. Values are candidates, not verified room measurements."},
       {key:"checks", label:"Measured checks", image:"room_candidates.png", note:"Numerical matches against the hand measurements. The scan and sketch are not spatially registered, so a close match does not confirm identity."},
@@ -89,6 +90,7 @@
     const esc = value => String(value ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]));
     const itemsFor = key => {
       if (key === "rooms") return data.files.rooms || [];
+      if (key === "layout") return data.files.rooms || [];
       if (key === "overlap") {
         const analysis=data.files.image_analysis || {};
         return (analysis.adjacent_pair_matches || []).map(match=>({
@@ -158,6 +160,11 @@
     function describe(item, key) {
       if (key === "overlap") { const m=item.match || {}; return `${m.status} · ${m.good_matches || 0} feature matches · ${m.ransac_inliers || 0} geometric inliers (${Math.round(100*(m.inlier_fraction || 0))}%)`; }
       if (key === "rooms") return `${Number(item.estimated_area_m2 || 0).toFixed(2)} m² estimated · center ${item.center_xz_m?.map(v=>Number(v).toFixed(2)).join(", ")} m`;
+      if (key === "layout") {
+        const geometry=item.geometry_candidate || {};
+        const spans=(geometry.dominant_axis_spans_m || []).map(v=>Number(v).toFixed(2)).join(" × ");
+        return `${Number(geometry.polygon_area_m2 || item.estimated_area_m2 || 0).toFixed(2)} m² rough area · ${spans || "dimensions unavailable"} m rough spans · candidate only`;
+      }
       if (key === "metrics") {
         const geometry=item.geometry_candidate || {}, floor=item.floor_surface_candidate || {}, upper=item.upper_surface_candidates || {};
         const spans=(geometry.dominant_axis_spans_m || []).map(v=>Number(v).toFixed(2)).join(" × ");
@@ -186,7 +193,7 @@
     }
     function renderCandidates() {
       const list=itemsFor(active), listEl=document.querySelector("#candidate-list"), currentMarks=marks();
-      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",partial_wall_rooms:"Partial outline hypotheses",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces",overlap:"Adjacent image overlap"}[active]);
+      document.querySelector("#list-title").textContent = active === "overview" ? "How to read this" : ({layout:"Rooms in this draft",rooms:"Raster room candidates",metrics:"Per-room measurements",checks:"Measured comparisons",wall_rooms:"Wall supported outlines",partial_wall_rooms:"Partial outline hypotheses",walls:"Wall candidates",gaps:"Possible wall gaps",consensus:"Shared wall traces",overlap:"Adjacent image overlap"}[active]);
       document.querySelector("#list-count").textContent = active === "overview" ? "" : `${list.length} total`;
       if (active === "overview") { listEl.innerHTML='<div class="empty">Choose a preview tab to inspect candidate details. Use the buttons on each candidate to record your visual review, then export the marks as JSON.</div>'; return; }
       if (!list.length) { listEl.innerHTML='<div class="empty">No candidates in this result.</div>'; return; }

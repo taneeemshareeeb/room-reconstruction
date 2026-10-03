@@ -29,6 +29,7 @@ JSON_FILES = {
 IMAGE_FILES = {
     "plan.png",
     "room_candidates.png",
+    "room_layout_draft.png",
     "wall_candidates.png",
     "cross_height_wall_candidates.png",
 }

@@ -161,6 +161,9 @@ PYTHONPATH=src python run.py data/raw/single_scan_with_ceiling.zip \
 
 The LiDAR output directory contains `point_cloud.npz`, `plan.png`, and
 `plan.json`, plus wall, room, surface, and opening candidate files.
+It also writes `room_layout_draft.png`, a clean scaled map of detected room
+regions. The regions are not a connected floor plan; their dimensions and
+boundaries are scan candidates and need review.
 
 For a folder of HEIC/JPEG/PNG photos, run:
 
