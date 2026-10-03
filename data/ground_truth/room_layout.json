@@ -1,0 +1,27 @@
+{
+  "source": "user-provided room_layout.png",
+  "status": "provisional_manual_measurements",
+  "units": "m",
+  "room": {
+    "width_top": 3.36,
+    "width_bottom": 3.32,
+    "left_length": {
+      "value": 3.63,
+      "status": "needs_remeasurement"
+    },
+    "right_length": {
+      "value": 4.15,
+      "status": "needs_remeasurement"
+    },
+    "ceiling_height": 2.63,
+    "doorway": {
+      "width": 0.85,
+      "location": "bottom wall, near right corner"
+    }
+  },
+  "notes": [
+    "The sketch identifies both room lengths as measurements to check.",
+    "The two width measurements differ by 0.04 m.",
+    "The two length measurements differ by 0.52 m; do not treat either as confirmed."
+  ]
+}
