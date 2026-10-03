@@ -195,6 +195,34 @@ def annotate_current_wall_support(
     return annotated
 
 
+def estimate_dominant_wall_axis_deg(
+    wall_candidates: list[dict[str, object]],
+) -> float:
+    """Estimate a grid orientation from wall directions without snapping them.
+
+    Directions are averaged modulo 90 degrees so perpendicular wall families
+    contribute to the same dominant raster orientation. Room contours remain
+    free-form in world coordinates; this only rotates the analysis grid.
+    """
+    weighted_direction = 0j
+    total_weight = 0.0
+    for wall in wall_candidates:
+        start = np.asarray(wall["start_xz_m"], dtype=np.float64)
+        end = np.asarray(wall["end_xz_m"], dtype=np.float64)
+        vector = end - start
+        length = float(np.linalg.norm(vector))
+        if length <= 0:
+            continue
+        angle = math.atan2(float(vector[1]), float(vector[0]))
+        weight = length * max(1, int(wall.get("support_count", 1)))
+        weighted_direction += weight * np.exp(4j * angle)
+        total_weight += weight
+    if total_weight == 0 or abs(weighted_direction) < 1e-8:
+        return 0.0
+    angle_deg = math.degrees(math.atan2(weighted_direction.imag, weighted_direction.real) / 4)
+    return float((angle_deg + 45.0) % 90.0 - 45.0)
+
+
 def propose_wall_supported_rooms(
     consensus_walls: list[dict[str, object]],
     *,

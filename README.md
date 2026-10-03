@@ -172,6 +172,10 @@ line segments are written to
 It also lists enclosed-region candidates in `room_candidates.json` and
 `room_candidates.png`. Dashed outlines trace the occupied grid boundary; they
 are candidates, not verified room geometry or survey-grade floor areas.
+For the room raster, the grid is rotated to the dominant orientation of
+cross-height wall traces. This reduces axis-aligned raster artifacts while
+leaving the traced polygon free-form; it does not snap walls to right angles
+or force the schematic room shape onto the scan.
 The runner also proposes four-sided outlines in `wall_room_candidates.json` by
 joining near-parallel opposing wall segments that are approximately
 perpendicular to a second pair. An outline is only emitted when the corners

@@ -24,17 +24,18 @@ and full perimeter are not recorded.
 
 ## Current scan comparison
 
-The scan produced 4 room candidates, no room-linked opening candidates, and 4
-separate wall-gap candidates. Candidate 03 is
-the closest size match by its outline's approximate rotated spans, about
-3.22 m × 3.93 m. Against the measured width average of 3.34 m, its short span
-is about 0.12 m (3.6%) smaller. Its long span falls between the two measured
-wall lengths. This is a rough numerical comparison, not a confirmed association
-between the schematic reference and that part of the scan.
+The scan produced 4 raster room candidates, no room-linked opening candidates,
+and 4 separate wall-gap candidates. The room raster follows the dominant
+cross-height wall orientation (about 27.3°); its polygons are not snapped to
+rectangles. Candidate 04 has approximate oriented spans of 3.20 m × 3.44 m
+and an estimated raster area of 8.08 m². These spans are numerically near some
+of the measured side lengths, but there is no spatial registration between the
+schematic reference and this scan region, so the association is unconfirmed.
 
-Candidate 03 reports 7.26 m². Its outline is fragmented, so the current room
-boundary and area are not reliable measurements. The measured side lengths do
-not yet provide a ground-truth area for comparison.
+The candidate outline is derived from a height-slice occupancy raster and
+remains incomplete in places. Its area is not a reliable measurement. The
+remeasured wall lengths do not determine ground-truth area without the full
+perimeter and corner geometry.
 
 The closest wall gap is 0.819 m, only 0.031 m (3.6%) narrower than the measured
 doorway. Both bounding wall traces have support in all three height bands.
@@ -49,7 +50,8 @@ room-specific floor-to-ceiling height.
 
 ## What this establishes
 
-- The scan contains a room candidate with rough dimensions in the right range.
+- The scan contains room-shaped raster regions, including one with rough spans
+  near some reported side lengths.
 - The room-to-sketch match remains uncertain because the scan has no visual
   registration to the schematic reference and the full room shape is unknown.
 - The scan contains a strongly supported wall gap close to the measured

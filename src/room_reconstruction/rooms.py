@@ -78,6 +78,7 @@ def _outer_boundary(mask: np.ndarray) -> list[list[int]]:
 def detect_room_candidates(
     points: np.ndarray,
     *,
+    grid_rotation_deg: float = 0.0,
     grid_size_m: float = 0.08,
     slice_min_height_m: float = 0.85,
     slice_max_height_m: float = 1.55,
@@ -99,6 +100,8 @@ def detect_room_candidates(
         raise ValueError("points must contain only finite coordinates")
     if grid_size_m <= 0 or slice_min_height_m < 0 or slice_max_height_m <= slice_min_height_m:
         raise ValueError("grid and slice dimensions must be positive and ordered")
+    if not np.isfinite(grid_rotation_deg):
+        raise ValueError("grid rotation must be finite")
     if gap_closing_cells < 1 or min_area_m2 <= 0 or max_area_m2 <= min_area_m2:
         raise ValueError("closing size and area limits must be positive and ordered")
     if min_dimension_m <= 0:
@@ -114,9 +117,13 @@ def detect_room_candidates(
     if len(in_slice) < 2:
         return []
 
-    cells = np.unique(
-        np.floor(in_slice[:, (0, 2)] / grid_size_m).astype(np.int64), axis=0
-    )
+    angle = np.deg2rad(grid_rotation_deg)
+    basis = np.asarray([
+        [np.cos(angle), -np.sin(angle)],
+        [np.sin(angle), np.cos(angle)],
+    ])
+    local_xz = in_slice[:, (0, 2)] @ basis
+    cells = np.unique(np.floor(local_xz / grid_size_m).astype(np.int64), axis=0)
     low = cells.min(axis=0)
     high = cells.max(axis=0)
     occupied = np.zeros(high - low + 1, dtype=bool)
@@ -144,27 +151,31 @@ def detect_room_candidates(
         if float(dimensions.min()) < min_dimension_m:
             continue
         offset = low - padding
-        minimum = (lower + offset) * grid_size_m
-        maximum = (upper + offset) * grid_size_m
-        center = (indices.mean(axis=0) + offset + 0.5) * grid_size_m
+        local_center = (indices.mean(axis=0) + offset + 0.5) * grid_size_m
+        center = local_center @ basis.T
         boundary = _outer_boundary(labels[lower[0]:upper[0], lower[1]:upper[1]] == label_id)
-        boundary_xz = [
-            [round(float((point[0] + lower[0] + offset[0]) * grid_size_m), 3),
-             round(float((point[1] + lower[1] + offset[1]) * grid_size_m), 3)]
+        boundary_local = np.asarray([
+            [(point[0] + lower[0] + offset[0]) * grid_size_m,
+             (point[1] + lower[1] + offset[1]) * grid_size_m]
             for point in boundary
-        ]
+        ])
+        boundary_world = boundary_local @ basis.T
+        boundary_xz = [[round(float(value), 3) for value in point] for point in boundary_world]
+        world_minimum = boundary_world.min(axis=0)
+        world_maximum = boundary_world.max(axis=0)
         candidates.append({
             "id": f"room_candidate_{len(candidates) + 1:02d}",
             "estimated_area_m2": round(float(area), 2),
             "bounds_xz_m": [
-                [round(float(minimum[0]), 3), round(float(minimum[1]), 3)],
-                [round(float(maximum[0]), 3), round(float(maximum[1]), 3)],
+                [round(float(world_minimum[0]), 3), round(float(world_minimum[1]), 3)],
+                [round(float(world_maximum[0]), 3), round(float(world_maximum[1]), 3)],
             ],
             "center_xz_m": [round(float(v), 3) for v in center],
             "boundary_xz_m": boundary_xz,
             "status": "candidate_unverified",
             "reason": (
                 "Enclosed grid region after closing small gaps in the height slice; "
+                f"analysis grid rotated {grid_rotation_deg:.1f}° to dominant wall direction; "
                 "review for doors, missing walls, and scan drift."
             ),
         })

@@ -13,6 +13,7 @@ import numpy as np
 from .consensus import (
     annotate_current_wall_support,
     detect_wall_candidates_by_height,
+    estimate_dominant_wall_axis_deg,
     find_consensus_walls,
     propose_wall_supported_rooms,
 )
@@ -76,7 +77,10 @@ def main(argv: list[str] | None = None) -> int:
             str(args.output_dir / "cross_height_wall_candidates.png"),
             capture_label(args.capture),
         )
-        room_candidates = detect_room_candidates(points)
+        room_grid_angle = estimate_dominant_wall_axis_deg(cross_height_wall_candidates)
+        room_candidates = detect_room_candidates(
+            points, grid_rotation_deg=room_grid_angle
+        )
         opening_candidates = infer_opening_candidates(wall_candidates, room_candidates)
         wall_gap_candidates = infer_wall_gap_candidates(wall_candidates)
         (args.output_dir / "room_candidates.json").write_text(
